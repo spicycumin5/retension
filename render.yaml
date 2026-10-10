@@ -1,0 +1,66 @@
+# Render Blueprint: web app + hourly digest job + Postgres.
+# Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
+databases:
+  - name: recall-db
+    databaseName: recall
+    user: recall
+    plan: basic-256mb
+
+services:
+  - type: web
+    name: recall
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recall-db
+          property: connectionString
+      - key: SECRET
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: EMAIL_BACKEND
+        value: resend
+      # Set these in the dashboard when prompted:
+      - key: FRONTEND_URL # e.g. https://recall.onrender.com or your domain
+        sync: false
+      - key: EMAIL_FROM # e.g. Recall <reminders@yourdomain.com>, on a domain verified in Resend
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+  - type: cron
+    name: recall-digest
+    runtime: docker
+    plan: starter
+    schedule: "5 * * * *" # hourly; each user gets theirs at their own local hour
+    dockerCommand: python -m app.jobs.send_digests
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: recall-db
+          property: connectionString
+      - key: SECRET
+        fromService:
+          type: web
+          name: recall
+          envVarKey: SECRET
+      - key: EMAIL_BACKEND
+        value: resend
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: recall
+          envVarKey: FRONTEND_URL
+      - key: EMAIL_FROM
+        fromService:
+          type: web
+          name: recall
+          envVarKey: EMAIL_FROM
+      - key: RESEND_API_KEY
+        fromService:
+          type: web
+          name: recall
+          envVarKey: RESEND_API_KEY
