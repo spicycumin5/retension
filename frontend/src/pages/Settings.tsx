@@ -4,10 +4,16 @@ import { api, type User } from '../api'
 import { ErrorText } from '../components'
 import { inputClass, primaryButton } from '../lib'
 
+const HOURS = Array.from({ length: 24 }, (_, h) => h)
+const formatHour = (h: number) =>
+  new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+
 export default function SettingsPage({ user }: { user: User }) {
   const qc = useQueryClient()
   const [timezone, setTimezone] = useState(user.timezone)
   const [cap, setCap] = useState(String(user.daily_review_cap))
+  const [digestEnabled, setDigestEnabled] = useState(user.digest_enabled)
+  const [digestHour, setDigestHour] = useState(user.digest_hour)
   const zones = useMemo(() => {
     const all = Intl.supportedValuesOf('timeZone')
     return all.includes(user.timezone) ? all : [user.timezone, ...all]
@@ -16,7 +22,15 @@ export default function SettingsPage({ user }: { user: User }) {
 
   const save = useMutation({
     mutationFn: () =>
-      api<User>('/users/me', { method: 'PATCH', json: { timezone, daily_review_cap: Number(cap) } }),
+      api<User>('/users/me', {
+        method: 'PATCH',
+        json: {
+          timezone,
+          daily_review_cap: Number(cap),
+          digest_enabled: digestEnabled,
+          digest_hour: digestHour,
+        },
+      }),
     onSuccess: (u) => {
       qc.setQueryData(['me'], u)
       qc.invalidateQueries({ queryKey: ['queue'] })
@@ -71,6 +85,37 @@ export default function SettingsPage({ user }: { user: User }) {
             )}
           </span>
         </label>
+
+        <fieldset className="space-y-3">
+          <legend className="mb-1.5 font-bold">Daily reminder email</legend>
+          <label className="flex items-center gap-2.5">
+            <input
+              type="checkbox"
+              className="size-4 accent-[var(--teal)]"
+              checked={digestEnabled}
+              onChange={(e) => setDigestEnabled(e.target.checked)}
+            />
+            <span>Email me when problems are due</span>
+          </label>
+          <label className="block">
+            <span className="flex items-center gap-2">
+              <span className={`shrink-0 ${digestEnabled ? '' : 'text-muted'}`}>Send it at</span>
+              <select
+                className={inputClass.replace('w-full', 'w-auto')}
+                disabled={!digestEnabled}
+                value={digestHour}
+                onChange={(e) => setDigestHour(Number(e.target.value))}
+              >
+                {HOURS.map((h) => (
+                  <option key={h} value={h}>{formatHour(h)}</option>
+                ))}
+              </select>
+            </span>
+          </label>
+          <span className="block text-[15px] text-muted">
+            Only sent on days something is due, in your time zone. Every email has a link to turn this off.
+          </span>
+        </fieldset>
 
         <div className="flex items-center gap-3">
           <button className={primaryButton} disabled={save.isPending}>Save changes</button>

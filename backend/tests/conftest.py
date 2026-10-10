@@ -61,7 +61,7 @@ async def _fresh_state(monkeypatch):
 
 
 def _client() -> httpx.AsyncClient:
-    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test/api")
 
 
 @pytest.fixture
@@ -74,9 +74,9 @@ async def signup(client: httpx.AsyncClient, email_addr: str = "a@example.com", t
     """Register, verify via the emailed token, and log in (cookie stored on the client)."""
     r = await client.post("/auth/register", json={"email": email_addr, "password": "hunter2hunter2", "timezone": tz})
     assert r.status_code == 201, r.text
-    to, _, body = email.sender.outbox[-1]
-    assert to == email_addr
-    token = re.search(r"token=(\S+)", body).group(1)
+    message = email.sender.outbox[-1]
+    assert message.to == email_addr
+    token = re.search(r"token=(\S+)", message.text).group(1)
     r = await client.post("/auth/verify", json={"token": token})
     assert r.status_code == 200, r.text
     r = await client.post("/auth/login", data={"username": email_addr, "password": "hunter2hunter2"})

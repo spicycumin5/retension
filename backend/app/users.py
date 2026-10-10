@@ -58,7 +58,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def on_after_request_verify(self, user: User, token: str, request: Request | None = None) -> None:
         link = f"{settings.frontend_url}/verify?token={token}"
-        await email.sender.send(
+        await email.send(
             user.email,
             "Verify your Recall account",
             f"Welcome to Recall! Confirm your email address:\n\n{link}\n",
@@ -66,7 +66,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
     async def on_after_forgot_password(self, user: User, token: str, request: Request | None = None) -> None:
         link = f"{settings.frontend_url}/reset-password?token={token}"
-        await email.sender.send(
+        await email.send(
             user.email,
             "Reset your Recall password",
             f"Someone asked to reset your Recall password. If it was you:\n\n{link}\n\n"

@@ -17,7 +17,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app import clock
+from app import clock, scheduling
 from app.db import Base, UTCDateTime
 
 
@@ -85,6 +85,17 @@ class Card(Base):
     @property
     def patterns(self) -> list[str]:
         return sorted(link.pattern for link in self.pattern_links)
+
+    def schedule_state(self) -> scheduling.CardState:
+        return scheduling.CardState(
+            due=self.due,
+            state=self.state,
+            stability=self.stability,
+            difficulty=self.difficulty,
+            last_review=self.last_review,
+            reps=self.reps,
+            lapses=self.lapses,
+        )
 
 
 class CardPattern(Base):

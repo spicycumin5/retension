@@ -17,18 +17,6 @@ from app.users import current_user
 router = APIRouter(tags=["cards"])
 
 
-def card_state(card: Card) -> scheduling.CardState:
-    return scheduling.CardState(
-        due=card.due,
-        state=card.state,
-        stability=card.stability,
-        difficulty=card.difficulty,
-        last_review=card.last_review,
-        reps=card.reps,
-        lapses=card.lapses,
-    )
-
-
 def apply_state(card: Card, s: scheduling.CardState) -> None:
     card.due, card.state = s.due, s.state
     card.stability, card.difficulty = s.stability, s.difficulty
@@ -46,7 +34,7 @@ def to_out(card: Card, at: datetime) -> CardOut:
         notes=card.notes,
         suspended=card.suspended,
         patterns=card.patterns,
-        retrievability=scheduling.retrievability(card_state(card), at),
+        retrievability=scheduling.retrievability(card.schedule_state(), at),
     )
 
 
@@ -71,7 +59,7 @@ async def _review(
 ) -> None:
     at = clock.now()
     new = scheduling.review(
-        card_state(card),
+        card.schedule_state(),
         rating,
         at,
         tz=user.timezone,
@@ -201,7 +189,7 @@ async def today(user: User = Depends(current_user), session: AsyncSession = Depe
             )
         )
     ).unique().all()
-    queue, overflow = scheduling.build_queue(cards, card_state, at, user.timezone, user.daily_review_cap)
+    queue, overflow = scheduling.build_queue(cards, Card.schedule_state, at, user.timezone, user.daily_review_cap)
 
     start_of_day = datetime.combine(at.astimezone(tz).date(), time.min, tzinfo=tz)
     reviewed_today = await session.scalar(

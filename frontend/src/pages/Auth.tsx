@@ -204,3 +204,36 @@ export function ResetPage() {
     </>
   )
 }
+
+export function UnsubscribePage() {
+  const [params] = useSearchParams()
+  const token = params.get('token') ?? ''
+  // Requires a click so email link scanners that pre-fetch URLs can't unsubscribe people.
+  const m = useMutation({
+    mutationFn: () => api(`/email/unsubscribe?${new URLSearchParams({ token })}`, { method: 'POST' }),
+  })
+  return (
+    <>
+      <h1 className="text-3xl font-bold">Daily reminder emails</h1>
+      {m.isSuccess ? (
+        <p className="mt-3">
+          Done. You won’t get daily reminders anymore. You can turn them back on in{' '}
+          <Link to="/settings" className="text-teal underline underline-offset-4">Settings</Link>.
+        </p>
+      ) : (
+        <>
+          <p className="mt-3 text-muted">
+            Stop the daily email that lists problems due for review. Your problems and schedule stay as they are.
+          </p>
+          <button className={`${primaryButton} mt-6`} disabled={!token || m.isPending} onClick={() => m.mutate()}>
+            Stop daily emails
+          </button>
+          <div className="mt-3">
+            {!token && <p className="text-hard">This link is missing its token. Open the link from your email again.</p>}
+            <ErrorText error={m.error} />
+          </div>
+        </>
+      )}
+    </>
+  )
+}

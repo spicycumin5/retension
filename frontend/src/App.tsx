@@ -4,7 +4,7 @@ import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { api, type User } from './api'
 import { secondaryButton, useMe } from './lib'
 import AddPage from './pages/Add'
-import { ForgotPage, LoginPage, ResetPage, SignupPage, VerifyPage } from './pages/Auth'
+import { ForgotPage, LoginPage, ResetPage, SignupPage, UnsubscribePage, VerifyPage } from './pages/Auth'
 import LibraryPage from './pages/Library'
 import SettingsPage from './pages/Settings'
 import TodayPage from './pages/Today'
@@ -99,6 +99,7 @@ export default function App() {
     <>
       <Route path="/verify" element={<AuthShell><VerifyPage /></AuthShell>} />
       <Route path="/reset-password" element={<AuthShell><ResetPage /></AuthShell>} />
+      <Route path="/unsubscribe" element={<AuthShell><UnsubscribePage /></AuthShell>} />
     </>
   )
 
