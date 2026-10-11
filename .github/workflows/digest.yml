@@ -15,7 +15,26 @@ permissions:
   contents: read
 
 jobs:
+  # Secrets can't be read in a job-level `if`, so check for them here first.
+  # Until DATABASE_URL is set, runs pass quietly instead of failing every hour.
+  configured:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "$DATABASE_URL" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Add the repo secrets listed in the README (Deploy for free) to start sending reminders."
+          fi
+
   send:
+    needs: configured
+    if: needs.configured.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
