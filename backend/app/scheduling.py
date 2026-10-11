@@ -19,6 +19,9 @@ _scheduler = fsrs.Scheduler(
 
 BALANCE_FRACTION = 0.15
 
+# A problem qualifies for a quick (approach-only) review once a solve holds this long.
+QUICK_MIN_STABILITY_DAYS = 21
+
 
 class UserRating(IntEnum):
     FAILED = 1
@@ -57,6 +60,14 @@ class CardState:
             due=self.due,
             last_review=self.last_review,
         )
+
+
+def quick_eligible(card: CardState) -> bool:
+    return card.stability is not None and card.stability >= QUICK_MIN_STABILITY_DAYS
+
+
+# Outlining an approach is a weaker test than solving, so it can't earn "Easy".
+QUICK_RATINGS = (UserRating.FAILED, UserRating.HINT, UserRating.SLOW)
 
 
 def new_card(at: datetime) -> CardState:

@@ -1,20 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type Card, type Queue, type RatingValue } from '../api'
+import { api, QUICK_RATINGS, type Card, type Queue, type RatingValue } from '../api'
 import { DifficultyTag, ErrorText, ForgettingCurve, PatternChips, RatingButtons } from '../components'
 import { formatClock, primaryButton, relativeDay, secondaryButton, usePatterns, useStopwatch } from '../lib'
+
+const QUICK_SECONDS = 120
+
+type Phase = 'idle' | 'solving' | 'rating' | 'quick' | 'quick-check'
+
+function Notes({ text }: { text: string }) {
+  return <p className="border-l-2 border-rule pl-3 text-[15px] text-muted whitespace-pre-line">{text}</p>
+}
 
 function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextDue: string) => void }) {
   const qc = useQueryClient()
   const patterns = usePatterns()
-  const [phase, setPhase] = useState<'idle' | 'solving' | 'rating'>('idle')
-  const [seconds] = useStopwatch(phase === 'solving')
+  const [phase, setPhase] = useState<Phase>('idle')
+  const [peek, setPeek] = useState(false)
+  const [seconds] = useStopwatch(phase === 'solving' || phase === 'quick')
+  const quick = phase === 'quick' || phase === 'quick-check'
   const review = useMutation({
     mutationFn: (rating: RatingValue) =>
       api<Card>(`/cards/${card.id}/reviews`, {
         method: 'POST',
-        json: { rating, duration_sec: seconds > 0 ? seconds : null },
+        json: { rating, duration_sec: seconds > 0 ? seconds : null, mode: quick ? 'quick' : 'full' },
       }),
     onSuccess: (updated) => {
       onDone(card.problem.title, updated.due)
@@ -25,6 +35,7 @@ function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextD
 
   const { problem } = card
   const pct = Math.round(card.retrievability * 100)
+  const remaining = Math.max(QUICK_SECONDS - seconds, 0)
 
   return (
     <li className="rounded-xl border border-rule bg-sheet p-5">
@@ -49,25 +60,39 @@ function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextD
         </figure>
       </div>
 
-      {card.notes && <p className="mt-3 border-l-2 border-rule pl-3 text-[15px] text-muted">{card.notes}</p>}
-
-      <div className="mt-4">
+      <div className="mt-4 space-y-3">
         {phase === 'idle' && (
-          <div className="flex flex-wrap gap-2">
-            <a
-              href={problem.url}
-              target="_blank"
-              rel="noreferrer"
-              onClick={() => setPhase('solving')}
-              className={primaryButton}
-            >
-              Open and start timer
-            </a>
-            <button type="button" className={secondaryButton} onClick={() => setPhase('rating')}>
-              I already solved it
-            </button>
-          </div>
+          <>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={problem.url}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setPhase('solving')}
+                className={primaryButton}
+              >
+                Open and start timer
+              </a>
+              {card.quick_eligible && (
+                <button type="button" className={secondaryButton} onClick={() => setPhase('quick')}>
+                  Quick review, 2 min
+                </button>
+              )}
+              <button type="button" className="px-2 text-muted underline underline-offset-4 hover:text-ink" onClick={() => setPhase('rating')}>
+                I already solved it
+              </button>
+            </div>
+            {card.notes &&
+              (peek ? (
+                <Notes text={card.notes} />
+              ) : (
+                <button type="button" className="text-[15px] text-muted underline underline-offset-4" onClick={() => setPeek(true)}>
+                  Show my notes
+                </button>
+              ))}
+          </>
         )}
+
         {phase === 'solving' && (
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-display text-3xl font-bold tabular-nums" aria-live="off">
@@ -78,12 +103,45 @@ function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextD
             </button>
           </div>
         )}
-        {phase === 'rating' && (
-          <div className="space-y-2">
-            <p className="font-bold">
-              How did it go?{seconds > 0 && <span className="font-normal text-muted"> You took {formatClock(seconds)}.</span>}
+
+        {phase === 'quick' && (
+          <div className="space-y-3 rounded-lg bg-paper p-4">
+            <p>
+              Without opening the problem, write down or say out loud: the approach, the key data structure, and the time
+              and space complexity.
             </p>
-            <RatingButtons onRate={(r) => review.mutate(r)} disabled={review.isPending} />
+            <div className="flex flex-wrap items-center gap-3">
+              <span className={`font-display text-3xl font-bold tabular-nums ${remaining === 0 ? 'text-hard' : ''}`} aria-live="off">
+                {formatClock(remaining)}
+              </span>
+              <button type="button" className={primaryButton} onClick={() => setPhase('quick-check')}>
+                {remaining === 0 ? 'Time’s up, check it' : 'Check my answer'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(phase === 'rating' || phase === 'quick-check') && (
+          <div className="space-y-3">
+            {phase === 'quick-check' && (
+              <p className="text-[15px]">
+                Compare with{card.notes ? ' your notes below, or' : ''}{' '}
+                <a href={`${problem.url}solutions/`} target="_blank" rel="noreferrer" className="text-teal underline underline-offset-4">
+                  the solutions on LeetCode
+                </a>
+                .
+              </p>
+            )}
+            {card.notes && <Notes text={card.notes} />}
+            <p className="font-bold">
+              How did it go?
+              {phase === 'rating' && seconds > 0 && <span className="font-normal text-muted"> You took {formatClock(seconds)}.</span>}
+            </p>
+            <RatingButtons
+              onRate={(r) => review.mutate(r)}
+              disabled={review.isPending}
+              options={phase === 'quick-check' ? QUICK_RATINGS : undefined}
+            />
             <ErrorText error={review.error} />
           </div>
         )}

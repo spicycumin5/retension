@@ -21,6 +21,7 @@ export interface Card {
   suspended: boolean
   patterns: string[]
   retrievability: number
+  quick_eligible: boolean
 }
 
 export interface Queue {
@@ -60,6 +61,19 @@ export const RATINGS = [
 ] as const
 
 export type RatingValue = (typeof RATINGS)[number]['value']
+
+export interface RatingOption {
+  value: RatingValue
+  label: string
+  hint: string
+}
+
+/** Quick reviews test only the approach, so they top out at the equivalent of "Solved slowly". */
+export const QUICK_RATINGS: RatingOption[] = [
+  { value: 1, label: 'Blank', hint: 'Couldn’t recall the approach' },
+  { value: 2, label: 'Fuzzy', hint: 'Got parts, missed some' },
+  { value: 3, label: 'Knew the approach', hint: 'Approach and complexity' },
+]
 
 export class ApiError extends Error {
   status: number

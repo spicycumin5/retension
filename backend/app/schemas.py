@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
@@ -57,6 +58,7 @@ class CardUpdate(BaseModel):
 class ReviewIn(BaseModel):
     rating: UserRating
     duration_sec: int | None = Field(default=None, ge=0, le=60 * 60 * 6)
+    mode: Literal["full", "quick"] = "full"
 
 
 class CardOut(BaseModel):
@@ -70,6 +72,7 @@ class CardOut(BaseModel):
     suspended: bool
     patterns: list[str]
     retrievability: float
+    quick_eligible: bool
 
 
 class QueueOut(BaseModel):

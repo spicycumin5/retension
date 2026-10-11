@@ -118,6 +118,8 @@ class Review(Base):
         ForeignKey("cards.id", ondelete="CASCADE"), index=True
     )
     rating: Mapped[int] = mapped_column(SmallInteger)
+    # "full" = re-solved from scratch; "quick" = recalled the approach without coding it
+    mode: Mapped[str] = mapped_column(String(10), default="full", server_default="full")
     duration_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reviewed_at: Mapped[datetime] = mapped_column(UTCDateTime)
 

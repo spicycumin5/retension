@@ -1,4 +1,4 @@
-import { RATINGS, type Card, type Difficulty, type Pattern, type RatingValue } from './api'
+import { RATINGS, type Card, type Difficulty, type Pattern, type RatingOption, type RatingValue } from './api'
 import { DAY } from './lib'
 
 // FSRS-6 forgetting curve: R(t) = (1 + F·t/S)^D, where R(S) = 0.9.
@@ -119,14 +119,16 @@ export function RatingButtons({
   onRate,
   disabled,
   compact = false,
+  options = RATINGS,
 }: {
   onRate: (r: RatingValue) => void
   disabled?: boolean
   compact?: boolean
+  options?: readonly RatingOption[]
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      {RATINGS.map((r) => (
+    <div className={`grid gap-2 ${options.length === 3 ? 'sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'}`}>
+      {options.map((r) => (
         <button
           key={r.value}
           type="button"

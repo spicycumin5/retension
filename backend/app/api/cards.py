@@ -35,6 +35,7 @@ def to_out(card: Card, at: datetime) -> CardOut:
         suspended=card.suspended,
         patterns=card.patterns,
         retrievability=scheduling.retrievability(card.schedule_state(), at),
+        quick_eligible=scheduling.quick_eligible(card.schedule_state()),
     )
 
 
@@ -65,6 +66,7 @@ async def _review(
     rating: scheduling.UserRating,
     duration_sec: int | None,
     at: datetime | None = None,
+    mode: str = "full",
 ) -> None:
     at = at or clock.now()
     new = scheduling.review(
@@ -77,7 +79,9 @@ async def _review(
         duration_sec=duration_sec,
     )
     apply_state(card, new)
-    session.add(Review(card_id=card.id, rating=int(rating), duration_sec=duration_sec, reviewed_at=at))
+    session.add(
+        Review(card_id=card.id, rating=int(rating), mode=mode, duration_sec=duration_sec, reviewed_at=at)
+    )
 
 
 async def _get_card(session: AsyncSession, user: User, card_id: int) -> Card:
@@ -186,7 +190,12 @@ async def review_card(
     card = await _get_card(session, user, card_id)
     if card.suspended:
         raise HTTPException(409, "Card is suspended")
-    await _review(session, user, card, body.rating, body.duration_sec)
+    if body.mode == "quick":
+        if not scheduling.quick_eligible(card.schedule_state()):
+            raise HTTPException(409, "Quick review is for problems you've held for 3+ weeks. Re-solve this one.")
+        if body.rating not in scheduling.QUICK_RATINGS:
+            raise HTTPException(422, "A quick review can be rated Blank, Fuzzy or Knew the approach")
+    await _review(session, user, card, body.rating, body.duration_sec, mode=body.mode)
     await session.commit()
     return to_out(card, clock.now())
 
