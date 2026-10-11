@@ -4,6 +4,15 @@ import { api, type User } from '../api'
 import { ErrorText } from '../components'
 import { inputClass, primaryButton } from '../lib'
 
+const MAX_INTERVALS = [
+  { days: 30, label: '1 month' },
+  { days: 60, label: '2 months' },
+  { days: 90, label: '3 months' },
+  { days: 180, label: '6 months' },
+  { days: 365, label: '1 year' },
+  { days: 36500, label: 'No limit' },
+]
+
 const HOURS = Array.from({ length: 24 }, (_, h) => h)
 const formatHour = (h: number) =>
   new Date(2000, 0, 1, h).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
@@ -14,6 +23,7 @@ export default function SettingsPage({ user }: { user: User }) {
   const [cap, setCap] = useState(String(user.daily_review_cap))
   const [digestEnabled, setDigestEnabled] = useState(user.digest_enabled)
   const [digestHour, setDigestHour] = useState(user.digest_hour)
+  const [maxInterval, setMaxInterval] = useState(user.max_interval_days)
   const [lcUsername, setLcUsername] = useState(user.leetcode_username ?? '')
   const zones = useMemo(() => {
     const all = Intl.supportedValuesOf('timeZone')
@@ -28,6 +38,7 @@ export default function SettingsPage({ user }: { user: User }) {
         json: {
           timezone,
           daily_review_cap: Number(cap),
+          max_interval_days: maxInterval,
           digest_enabled: digestEnabled,
           digest_hour: digestHour,
           leetcode_username: lcUsername.trim() || null,
@@ -37,6 +48,7 @@ export default function SettingsPage({ user }: { user: User }) {
       qc.setQueryData(['me'], u)
       qc.invalidateQueries({ queryKey: ['queue'] })
       qc.invalidateQueries({ queryKey: ['import'] })
+      qc.invalidateQueries({ queryKey: ['cards'] })
     },
   })
   const submit = (e: FormEvent) => {
@@ -66,6 +78,20 @@ export default function SettingsPage({ user }: { user: User }) {
           <span className="mt-1.5 block text-[15px] text-muted">
             A full re-solve takes 20–40 minutes, so a small number you’ll actually do beats a big one you’ll skip.
             Recall spreads reviews out so no day goes over this.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block font-bold">Longest gap between reviews</span>
+          <select className={inputClass} value={maxInterval} onChange={(e) => setMaxInterval(Number(e.target.value))}>
+            {!MAX_INTERVALS.some((o) => o.days === maxInterval) && <option value={maxInterval}>{maxInterval} days</option>}
+            {MAX_INTERVALS.map((o) => (
+              <option key={o.days} value={o.days}>{o.label}</option>
+            ))}
+          </select>
+          <span className="mt-1.5 block text-[15px] text-muted">
+            Problems you know well get spaced further and further apart. Set this to how far away your interviews are, so
+            nothing drifts past them. Lowering it also pulls in reviews already scheduled further out.
           </span>
         </label>
 

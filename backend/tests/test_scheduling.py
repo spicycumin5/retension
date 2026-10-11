@@ -83,7 +83,7 @@ def test_review_applies_balancing(monkeypatch):
     shifted = T0 + timedelta(days=42)
     calls = []
 
-    def fake_balance(review_at, due, tz, load, cap):
+    def fake_balance(review_at, due, tz, load, cap, latest=None):
         calls.append((review_at, tz, cap))
         return shifted
 
@@ -118,3 +118,24 @@ def test_queue_uses_local_day():
 def test_end_of_local_day_is_after_now(tz):
     end = s.end_of_local_day(T0, tz)
     assert timedelta(0) < end - T0 <= timedelta(days=1)
+
+
+def test_max_interval_caps_due_date():
+    card = first(UserRating.COLD)
+    for _ in range(4):
+        card = s.review(card, UserRating.COLD, card.due)
+    uncapped = card
+    capped = s.review(uncapped, UserRating.COLD, uncapped.due, max_interval_days=30)
+    free = s.review(uncapped, UserRating.COLD, uncapped.due)
+    assert free.due - uncapped.due > timedelta(days=30)
+    assert capped.due - uncapped.due == timedelta(days=30)
+
+
+def test_balancing_never_pushes_past_max_interval():
+    at = T0
+    limit = at + timedelta(days=30)
+    lo, _ = s.balance_window(at, limit, "UTC")
+    full = {lo + timedelta(days=i): 9 for i in range(60)}
+    full[s.local_date(limit, "UTC") + timedelta(days=1)] = 0  # tempting free day just past the cap
+    moved = s.balance(at, limit, "UTC", full, cap=3, latest=s.local_date(limit, "UTC"))
+    assert moved <= limit

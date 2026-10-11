@@ -77,6 +77,7 @@ async def _review(
         load=await _load_by_day(session, user, at, card.id),
         cap=user.daily_review_cap,
         duration_sec=duration_sec,
+        max_interval_days=user.max_interval_days,
     )
     apply_state(card, new)
     session.add(

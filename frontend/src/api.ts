@@ -50,6 +50,7 @@ export interface User {
   daily_review_cap: number
   digest_enabled: boolean
   leetcode_username: string | null
+  max_interval_days: number
 }
 
 /** Ratings shown to users; values match the backend's UserRating. */

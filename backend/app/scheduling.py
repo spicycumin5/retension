@@ -19,6 +19,11 @@ _scheduler = fsrs.Scheduler(
 
 BALANCE_FRACTION = 0.15
 
+# Bounds and default for the user's "longest gap between reviews" setting.
+MIN_MAX_INTERVAL_DAYS = 7
+DEFAULT_MAX_INTERVAL_DAYS = 180
+NO_MAX_INTERVAL_DAYS = 36500  # FSRS's own ceiling; effectively "no limit"
+
 # A problem qualifies for a quick (approach-only) review once a solve holds this long.
 QUICK_MIN_STABILITY_DAYS = 21
 
@@ -95,13 +100,23 @@ def balance_window(review_at: datetime, due: datetime, tz: str) -> tuple[date, d
 
 
 def balance(
-    review_at: datetime, due: datetime, tz: str, load: Mapping[date, int], cap: int
+    review_at: datetime,
+    due: datetime,
+    tz: str,
+    load: Mapping[date, int],
+    cap: int,
+    latest: date | None = None,
 ) -> datetime:
-    """Move `due` to a lighter day nearby if its day already has `cap` or more cards."""
+    """Move `due` to a lighter day nearby if its day already has `cap` or more cards.
+
+    `latest` bounds how late it may move (the user's maximum interval).
+    """
     target = local_date(due, tz)
     if load.get(target, 0) < cap:
         return due
     lo, hi = balance_window(review_at, due, tz)
+    if latest is not None:
+        hi = max(min(hi, latest), lo)
     days = [lo + timedelta(days=i) for i in range((hi - lo).days + 1)]
     # Lightest day wins, then closest to target, then later (spacing longer is safer).
     best = min(days, key=lambda d: (load.get(d, 0), abs((d - target).days), -(d - target).days))
@@ -117,6 +132,7 @@ def review(
     load: Mapping[date, int] | None = None,
     cap: int | None = None,
     duration_sec: int | None = None,
+    max_interval_days: int | None = None,
 ) -> CardState:
     updated, _ = _scheduler.review_card(
         card.to_fsrs(),
@@ -125,8 +141,13 @@ def review(
         review_duration=duration_sec * 1000 if duration_sec else None,
     )
     due = updated.due
+    latest = None
+    if max_interval_days is not None:
+        limit = at + timedelta(days=max_interval_days)
+        due = min(due, limit)
+        latest = local_date(limit, tz)
     if load is not None and cap is not None:
-        due = balance(at, due, tz, load, cap)
+        due = balance(at, due, tz, load, cap, latest=latest)
     lapsed = rating == UserRating.FAILED and card.reps > 0
     return CardState(
         due=due,

@@ -27,6 +27,11 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     timezone: Mapped[str] = mapped_column(String(64), default="UTC")
     digest_hour: Mapped[int] = mapped_column(SmallInteger, default=8)
     daily_review_cap: Mapped[int] = mapped_column(SmallInteger, default=3)
+    max_interval_days: Mapped[int] = mapped_column(
+        Integer,
+        default=scheduling.DEFAULT_MAX_INTERVAL_DAYS,
+        server_default=str(scheduling.DEFAULT_MAX_INTERVAL_DAYS),
+    )
     digest_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     last_digest_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     leetcode_username: Mapped[str | None] = mapped_column(String(40), nullable=True)

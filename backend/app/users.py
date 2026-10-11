@@ -1,19 +1,20 @@
+import re
 import uuid
+from datetime import timedelta
 from zoneinfo import available_timezones
 
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
 from fastapi_users.authentication import AuthenticationBackend, CookieTransport, JWTStrategy
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
-import re
-
 from pydantic import Field, field_validator
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import email
+from app import email, scheduling
 from app.config import get_settings
 from app.db import get_session
-from app.models import User
+from app.models import Card, User
 
 settings = get_settings()
 _TIMEZONES = available_timezones()
@@ -45,6 +46,7 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
     daily_review_cap: int
     digest_enabled: bool
     leetcode_username: str | None
+    max_interval_days: int
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -58,6 +60,9 @@ class UserUpdate(schemas.BaseUserUpdate):
     daily_review_cap: int | None = Field(default=None, ge=1, le=50)
     digest_enabled: bool | None = None
     leetcode_username: str | None = None
+    max_interval_days: int | None = Field(
+        default=None, ge=scheduling.MIN_MAX_INTERVAL_DAYS, le=scheduling.NO_MAX_INTERVAL_DAYS
+    )
     _tz = field_validator("timezone")(_check_tz)
     _lc = field_validator("leetcode_username")(_check_lc_username)
 
@@ -71,6 +76,10 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
         if len(password) < 8:
             raise InvalidPasswordException("Password must be at least 8 characters")
+
+    async def on_after_update(self, user: User, update_dict: dict, request: Request | None = None) -> None:
+        if "max_interval_days" in update_dict:
+            await clamp_due_dates(self.user_db.session, user)
 
     async def on_after_register(self, user: User, request: Request | None = None) -> None:
         await self.request_verify(user, request)
@@ -91,6 +100,24 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             f"Someone asked to reset your Recall password. If it was you:\n\n{link}\n\n"
             "If not, you can ignore this email.",
         )
+
+
+async def clamp_due_dates(session: AsyncSession, user: User) -> int:
+    """Pull in reviews scheduled further out than the user's maximum interval allows."""
+    cards = (
+        await session.scalars(
+            select(Card).where(Card.user_id == user.id, Card.last_review.is_not(None))
+        )
+    ).unique().all()
+    changed = 0
+    for card in cards:
+        limit = card.last_review + timedelta(days=user.max_interval_days)
+        if card.due > limit:
+            card.due = limit
+            changed += 1
+    if changed:
+        await session.commit()
+    return changed
 
 
 async def get_user_db(session: AsyncSession = Depends(get_session)):

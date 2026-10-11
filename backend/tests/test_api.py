@@ -117,3 +117,30 @@ async def test_settings_validation(user_client):
     assert (await user_client.patch("/users/me", json={"digest_hour": 24})).status_code == 422
     r = await user_client.patch("/users/me", json={"timezone": "Asia/Seoul", "digest_hour": 7})
     assert r.status_code == 200 and r.json()["timezone"] == "Asia/Seoul"
+
+
+async def test_max_interval_setting(user_client):
+    me = (await user_client.get("/users/me")).json()
+    assert me["max_interval_days"] == 180
+    assert (await user_client.patch("/users/me", json={"max_interval_days": 3})).status_code == 422
+    assert (await user_client.patch("/users/me", json={"max_interval_days": 14})).status_code == 200
+
+    card = await add(user_client, "1", rating=4)
+    for _ in range(4):
+        clock.travel(datetime.fromisoformat(card["due"]) - clock.now() + timedelta(hours=1))
+        card = (await user_client.post(f"/cards/{card['id']}/reviews", json={"rating": 4})).json()
+        gap = datetime.fromisoformat(card["due"]) - datetime.fromisoformat(card["last_review"])
+        assert gap <= timedelta(days=14)
+
+
+async def test_lowering_max_interval_pulls_in_scheduled_reviews(user_client):
+    card = await add(user_client, "1", rating=4)
+    for _ in range(3):
+        clock.travel(datetime.fromisoformat(card["due"]) - clock.now() + timedelta(hours=1))
+        card = (await user_client.post(f"/cards/{card['id']}/reviews", json={"rating": 4})).json()
+    last = datetime.fromisoformat(card["last_review"])
+    assert datetime.fromisoformat(card["due"]) - last > timedelta(days=30)
+
+    await user_client.patch("/users/me", json={"max_interval_days": 30})
+    [updated] = (await user_client.get("/cards")).json()
+    assert datetime.fromisoformat(updated["due"]) - last == timedelta(days=30)
