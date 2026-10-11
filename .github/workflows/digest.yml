@@ -1,0 +1,42 @@
+# Sends the daily reminder emails. Runs hourly; each user gets theirs once
+# their local time passes their chosen hour, so a late run still delivers.
+name: Daily reminder emails
+
+on:
+  schedule:
+    - cron: "17 * * * *" # off the top of the hour, when GitHub's scheduler is busiest
+  workflow_dispatch: # "Run workflow" button for testing
+
+concurrency:
+  group: digest
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      ENV: production
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
+      EMAIL_BACKEND: smtp
+      EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      # The job never signs tokens, so it doesn't need the app's SECRET; settings just require one.
+      - run: echo "SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - run: python -m app.jobs.send_digests

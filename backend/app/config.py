@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,9 +20,14 @@ class Settings(BaseSettings):
     # Built frontend to serve from the API process (production). Empty = don't serve.
     static_dir: str = ""
 
-    email_backend: Literal["console", "resend"] = "console"
+    email_backend: Literal["console", "resend", "smtp"] = "console"
     email_from: str = "Recall <reminders@example.com>"
     resend_api_key: str = ""
+    # SMTP defaults suit Gmail with an app password.
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
 
     @property
     def is_dev(self) -> bool:
@@ -33,8 +39,16 @@ class Settings(BaseSettings):
         # Hosts like Render hand out postgres:// URLs; SQLAlchemy async needs the driver named.
         for prefix in ("postgres://", "postgresql://"):
             if url.startswith(prefix):
-                return "postgresql+asyncpg://" + url[len(prefix):]
+                url = "postgresql+asyncpg://" + url[len(prefix):]
+        if url.startswith("postgresql+asyncpg://"):
+            url = _asyncpg_query(url)
         return url
+
+    @field_validator("smtp_password")
+    @classmethod
+    def _strip_spaces(cls, password: str) -> str:
+        # Gmail displays app passwords in groups of four ("abcd efgh ..."); spaces aren't part of them.
+        return "".join(password.split())
 
     @field_validator("frontend_url")
     @classmethod
@@ -48,7 +62,24 @@ class Settings(BaseSettings):
                 raise ValueError("SECRET must be set to a random string of 32+ characters outside dev")
             if self.email_backend == "resend" and not self.resend_api_key:
                 raise ValueError("RESEND_API_KEY is required when EMAIL_BACKEND=resend")
+            if self.email_backend == "smtp" and not (self.smtp_username and self.smtp_password):
+                raise ValueError("SMTP_USERNAME and SMTP_PASSWORD are required when EMAIL_BACKEND=smtp")
         return self
+
+
+def _asyncpg_query(url: str) -> str:
+    """Hosted Postgres URLs (Neon, Supabase) carry libpq options asyncpg doesn't accept.
+
+    sslmode=require becomes asyncpg's ssl=require; channel_binding has no asyncpg equivalent.
+    """
+    parts = urlsplit(url)
+    query = []
+    for key, value in parse_qsl(parts.query):
+        if key == "sslmode":
+            query.append(("ssl", value))
+        elif key != "channel_binding":
+            query.append((key, value))
+    return urlunsplit(parts._replace(query=urlencode(query)))
 
 
 @lru_cache

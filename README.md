@@ -24,7 +24,7 @@ npm install
 npm run dev                       # http://localhost:5173, proxies /api to :8000
 ```
 
-Daily reminder emails come from an hourly job. Run it by hand with
+Daily reminder emails come from an hourly job (GitHub Actions in production). Run it by hand with
 `.venv/Scripts/python -m app.jobs.send_digests` (from `backend/`). Each user gets one email
 on days something is due, once their local time passes their chosen hour.
 
@@ -32,17 +32,33 @@ In dev, emails (verification, password reset) are printed to the backend console
 `POST /dev/time-travel {"days": 5}` shifts the server clock so reviews come due
 (dev only; the browser's own clock isn't shifted, so relative dates in the UI will lag).
 
-## Deploy (Render)
+## Deploy for free
 
-`render.yaml` is a Render Blueprint: one Docker web service (FastAPI serving the API under
-`/api` plus the built frontend), an hourly cron job for the digest, and Postgres.
+Four free services: **Render** runs the app (one Docker web service serving the API under
+`/api` plus the built frontend), **Neon** hosts Postgres, **GitHub Actions** runs the hourly
+reminder job, and **Gmail** sends the email.
 
-1. Create a [Resend](https://resend.com) account, verify a sending domain, and create an API key.
-2. In Render: New, then Blueprint, then pick this repo.
-3. When prompted, set `FRONTEND_URL` (the app's public URL), `EMAIL_FROM` (an address on your
-   verified domain) and `RESEND_API_KEY`. `SECRET` is generated for you.
+1. **Gmail app password.** Turn on 2-Step Verification for your Google account, then create an
+   app password (Google Account, then Security, then App passwords). Use it instead of your
+   normal password everywhere below. Test it locally first: in `backend/.env` set
+   `EMAIL_BACKEND=smtp`, `EMAIL_FROM`, `SMTP_USERNAME` and `SMTP_PASSWORD`, then run
+   `.venv/Scripts/python -m app.jobs.send_test_email you@gmail.com`.
+2. **Neon.** Create a free project and copy its connection string
+   (`postgresql://...?sslmode=require`). It works as-is; the app converts it for its driver.
+3. **Render.** New, then Blueprint, then pick this repo. When prompted, set `DATABASE_URL`
+   (from Neon), `FRONTEND_URL` (the app's onrender.com URL; set it after the first deploy if
+   you don't know it yet), `EMAIL_FROM` (e.g. `Recall <you@gmail.com>`), `SMTP_USERNAME`
+   (your Gmail address) and `SMTP_PASSWORD` (the app password). Migrations run when the
+   service starts.
+4. **GitHub Actions.** In the repo's Settings, then Secrets and variables, then Actions, add
+   `DATABASE_URL`, `FRONTEND_URL`, `EMAIL_FROM`, `SMTP_USERNAME` and `SMTP_PASSWORD` with the
+   same values. Then open the Actions tab, pick "Daily reminder emails" and use "Run workflow"
+   once to check it.
 
-Migrations run automatically when the web service starts.
+Limits to know: the free Render service sleeps after 15 idle minutes and takes 30 to 60 seconds
+to wake; Gmail allows roughly 500 emails a day and may send bulk mail from a personal address to
+spam, so this suits a personal tool or a small group. For more users, switch to
+`EMAIL_BACKEND=resend` with a verified domain.
 
 ## Tests
 

@@ -33,3 +33,22 @@ async def test_spa_fallback_serves_index_for_client_routes(tmp_path):
         assert (await c.get("/assets/app.js")).text == "console.log(1)"
         r = await c.get("/library")
         assert r.status_code == 200 and "app" in r.text
+
+
+def test_neon_url_options_are_translated_for_asyncpg():
+    s = Settings(database_url="postgresql://u:p@ep-x.neon.tech/neondb?sslmode=require&channel_binding=require")
+    assert s.database_url == "postgresql+asyncpg://u:p@ep-x.neon.tech/neondb?ssl=require"
+
+
+def test_plain_urls_are_untouched():
+    url = "postgresql+asyncpg://recall:recall@localhost:5432/recall"
+    assert Settings(database_url=url).database_url == url
+    assert Settings(database_url="sqlite+aiosqlite:///x.db").database_url == "sqlite+aiosqlite:///x.db"
+
+
+def test_production_smtp_requires_credentials_and_strips_app_password_spaces():
+    with pytest.raises(ValidationError, match="SMTP_USERNAME"):
+        Settings(env="production", secret="x" * 40, email_backend="smtp")
+    s = Settings(env="production", secret="x" * 40, email_backend="smtp",
+                 smtp_username="me@gmail.com", smtp_password="abcd efgh ijkl mnop")
+    assert s.smtp_password == "abcdefghijklmnop"

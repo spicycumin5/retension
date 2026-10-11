@@ -1,66 +1,28 @@
-# Render Blueprint: web app + hourly digest job + Postgres.
+# Render Blueprint for the free setup: one free web service (API + frontend).
+# The database is Neon (free) and the hourly reminder job runs on GitHub Actions
+# (.github/workflows/digest.yml), so nothing here is billed.
 # Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
-databases:
-  - name: recall-db
-    databaseName: recall
-    user: recall
-    plan: basic-256mb
-
 services:
   - type: web
     name: recall
     runtime: docker
-    plan: starter
+    plan: free
     healthCheckPath: /api/health
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: recall-db
-          property: connectionString
       - key: SECRET
         generateValue: true
       - key: COOKIE_SECURE
         value: "true"
       - key: EMAIL_BACKEND
-        value: resend
+        value: smtp
       # Set these in the dashboard when prompted:
-      - key: FRONTEND_URL # e.g. https://recall.onrender.com or your domain
+      - key: DATABASE_URL # Neon connection string
         sync: false
-      - key: EMAIL_FROM # e.g. Recall <reminders@yourdomain.com>, on a domain verified in Resend
+      - key: FRONTEND_URL # e.g. https://recall-xxxx.onrender.com
         sync: false
-      - key: RESEND_API_KEY
+      - key: EMAIL_FROM # e.g. Recall <you@gmail.com>
         sync: false
-
-  - type: cron
-    name: recall-digest
-    runtime: docker
-    plan: starter
-    schedule: "5 * * * *" # hourly; each user gets theirs at their own local hour
-    dockerCommand: python -m app.jobs.send_digests
-    envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: recall-db
-          property: connectionString
-      - key: SECRET
-        fromService:
-          type: web
-          name: recall
-          envVarKey: SECRET
-      - key: EMAIL_BACKEND
-        value: resend
-      - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: recall
-          envVarKey: FRONTEND_URL
-      - key: EMAIL_FROM
-        fromService:
-          type: web
-          name: recall
-          envVarKey: EMAIL_FROM
-      - key: RESEND_API_KEY
-        fromService:
-          type: web
-          name: recall
-          envVarKey: RESEND_API_KEY
+      - key: SMTP_USERNAME # your Gmail address
+        sync: false
+      - key: SMTP_PASSWORD # a Gmail app password, not your account password
+        sync: false
