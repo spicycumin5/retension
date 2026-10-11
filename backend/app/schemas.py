@@ -87,6 +87,21 @@ class WeakCardOut(BaseModel):
     recall: float
 
 
+class BankProblemOut(BaseModel):
+    slug: str
+    title: str
+    difficulty: str
+    lc_number: int
+    url: str
+
+
+class SuggestionOut(BaseModel):
+    pattern: str
+    name: str
+    reason: str
+    problem: BankProblemOut
+
+
 class PatternStatsOut(BaseModel):
     pattern: str
     name: str
@@ -97,6 +112,7 @@ class PatternStatsOut(BaseModel):
     avg_recall: float | None
     holds_days: float | None
     weakest: list[WeakCardOut]
+    next_problem: BankProblemOut | None  # a well-known problem in this pattern you haven't tracked
 
 
 class ImportItem(BaseModel):

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api, type Card, type ImportItem, type ImportResult, type RatingValue, type ResolveResult } from '../api'
 import { DifficultyTag, ErrorText, PatternPicker, RatingButtons } from '../components'
 import { inputClass, primaryButton, relativeDay, useMe, usePatterns } from '../lib'
@@ -179,7 +179,8 @@ function LogForm({ result, onLogged }: { result: ResolveResult; onLogged: (card:
 }
 
 export default function AddPage() {
-  const [query, setQuery] = useState('')
+  const [params] = useSearchParams()
+  const [query, setQuery] = useState(params.get('q') ?? '')
   const [logged, setLogged] = useState<Card | null>(null)
   const resolve = useMutation({
     mutationFn: (q: string) => api<ResolveResult>('/problems/resolve', { method: 'POST', json: { query: q } }),
@@ -190,6 +191,16 @@ export default function AddPage() {
     setLogged(null)
     if (query.trim()) resolve.mutate(query.trim())
   }
+
+  // Arriving from a "Log it" link: look the problem up straight away.
+  const autoLookedUp = useRef(false)
+  useEffect(() => {
+    const q = params.get('q')
+    if (q && !autoLookedUp.current) {
+      autoLookedUp.current = true
+      resolve.mutate(q)
+    }
+  }, [params, resolve])
 
   const result = resolve.data
   return (

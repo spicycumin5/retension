@@ -8,6 +8,7 @@ from statistics import mean, median
 from app import scheduling
 from app.models import Card
 from app.patterns import PATTERNS
+from app.problem_bank import BANK, BankProblem
 
 WEAKEST_SHOWN = 3
 
@@ -55,3 +56,34 @@ def pattern_stats(cards: Iterable[Card], at: datetime, tz: str) -> list[PatternS
         )
     tracked.sort(key=lambda s: (s.avg_recall, -s.due))
     return tracked + untracked
+
+
+@dataclass
+class Suggestion:
+    pattern: str
+    reason: str
+    problem: BankProblem
+
+
+def next_in_pattern(pattern: str, exclude: set[str]) -> BankProblem | None:
+    return next((p for p in BANK.get(pattern, []) if p.slug not in exclude), None)
+
+
+def suggest(stats: list[PatternStats], exclude: set[str], limit: int = 3, from_weak: int = 2) -> list[Suggestion]:
+    """New problems to learn: the weakest tracked patterns first, then patterns not started yet.
+
+    `stats` must be ordered as pattern_stats returns it; `exclude` holds slugs the user tracks or skipped.
+    """
+    picks: list[Suggestion] = []
+    tracked = [s for s in stats if s.problems]
+    for s in tracked:
+        if len(picks) >= min(from_weak, limit):
+            break
+        if problem := next_in_pattern(s.pattern, exclude):
+            picks.append(Suggestion(s.pattern, f"Lowest recall of your patterns, {round((s.avg_recall or 0) * 100)}%", problem))
+    for s in stats:
+        if len(picks) >= limit:
+            break
+        if s.problems == 0 and (problem := next_in_pattern(s.pattern, exclude)):
+            picks.append(Suggestion(s.pattern, "A pattern you haven’t started", problem))
+    return picks

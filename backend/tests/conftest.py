@@ -28,6 +28,10 @@ FAKE_PROBLEMS = {
     "two-sum": leetcode.ProblemInfo(
         slug="two-sum", title="Two Sum", lc_number=1, difficulty="Easy", lc_tags=["array", "hash-table"],
     ),
+    "contains-duplicate": leetcode.ProblemInfo(
+        slug="contains-duplicate", title="Contains Duplicate", lc_number=217, difficulty="Easy",
+        lc_tags=["array", "hash-table", "sorting"],
+    ),
     "number-of-islands": leetcode.ProblemInfo(
         slug="number-of-islands", title="Number of Islands", lc_number=200, difficulty="Medium",
         lc_tags=["array", "depth-first-search", "breadth-first-search", "union-find", "matrix"],

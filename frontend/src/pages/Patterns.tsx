@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type PatternStats } from '../api'
-import { ErrorText } from '../components'
+import { DifficultyTag, ErrorText } from '../components'
 
 const pct = (r: number) => `${Math.round(r * 100)}%`
 
@@ -75,9 +75,22 @@ function PatternRow({ s }: { s: PatternStats }) {
               </li>
             ))}
           </ul>
-          <a href={s.practice_url} target="_blank" rel="noreferrer" className="inline-block text-[15px] text-teal underline underline-offset-4">
-            Find a new {s.name} problem on LeetCode
-          </a>
+          <div className="border-t border-rule pt-2 text-[15px]">
+            {s.next_problem ? (
+              <p>
+                <span className="text-muted">Try next: </span>
+                <a href={s.next_problem.url} target="_blank" rel="noreferrer" className="font-bold text-teal underline underline-offset-4">
+                  {s.next_problem.lc_number}. {s.next_problem.title}
+                </a>{' '}
+                <DifficultyTag difficulty={s.next_problem.difficulty} />
+              </p>
+            ) : (
+              <p className="text-muted">You track every problem Recall knows for this pattern.</p>
+            )}
+            <a href={s.practice_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-muted underline underline-offset-4">
+              Browse all {s.name} problems on LeetCode
+            </a>
+          </div>
         </div>
       )}
     </li>

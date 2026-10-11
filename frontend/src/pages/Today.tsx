@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, QUICK_RATINGS, type Card, type Queue, type RatingValue } from '../api'
+import { api, QUICK_RATINGS, type Card, type Queue, type RatingValue, type Suggestion } from '../api'
 import { DifficultyTag, ErrorText, ForgettingCurve, PatternChips, RatingButtons } from '../components'
 import { formatClock, primaryButton, relativeDay, secondaryButton, usePatterns, useStopwatch } from '../lib'
 
@@ -150,6 +150,39 @@ function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextD
   )
 }
 
+function TryNext({ cleared }: { cleared: boolean }) {
+  const suggestions = useQuery({ queryKey: ['cards', 'suggestions'], queryFn: () => api<Suggestion[]>('/suggestions') })
+  if (!suggestions.data?.length) return null
+  return (
+    <section>
+      <h2 className="text-2xl font-bold">Try a new problem</h2>
+      <p className="mt-1 text-muted">
+        {cleared ? 'Reviews are done, so this is a good time to learn something new.' : 'Once your reviews are done.'}
+      </p>
+      <ul className="mt-4 divide-y divide-rule rounded-xl border border-rule bg-sheet px-5">
+        {suggestions.data.map((s) => (
+          <li key={s.problem.slug} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-4">
+            <div className="min-w-0">
+              <a href={s.problem.url} target="_blank" rel="noreferrer" className="font-bold hover:text-teal hover:underline underline-offset-4">
+                <span className="text-muted">{s.problem.lc_number}. </span>
+                {s.problem.title}
+              </a>
+              <p className="flex flex-wrap gap-x-4 text-[15px] text-muted">
+                <DifficultyTag difficulty={s.problem.difficulty} />
+                <span>{s.name}</span>
+                <span>{s.reason}</span>
+              </p>
+            </div>
+            <Link to={`/add?q=${encodeURIComponent(s.problem.slug)}`} className="text-[15px] text-teal underline underline-offset-4">
+              Solved it? Log it
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 export default function TodayPage() {
   const queue = useQuery({ queryKey: ['queue'], queryFn: () => api<Queue>('/queue/today') })
   const [done, setDone] = useState<{ title: string; due: string }[]>([])
@@ -196,7 +229,7 @@ export default function TodayPage() {
       )}
 
       {count > 0 ? (
-        <ul className="space-y-4">
+        <ul className="space-y-4" aria-label="Problems to re-solve">
           {cards.map((c) => (
             <ReviewRow key={c.id} card={c} onDone={(title, due) => setDone((d) => [...d, { title, due }])} />
           ))}
@@ -206,6 +239,8 @@ export default function TodayPage() {
           Log a problem
         </Link>
       )}
+
+      <TryNext cleared={count === 0} />
     </div>
   )
 }

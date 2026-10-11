@@ -135,6 +135,22 @@ export interface PatternStats {
   avg_recall: number | null
   holds_days: number | null
   weakest: { card_id: number; problem: Problem; recall: number }[]
+  next_problem: BankProblem | null
+}
+
+export interface BankProblem {
+  slug: string
+  title: string
+  difficulty: Difficulty
+  lc_number: number
+  url: string
+}
+
+export interface Suggestion {
+  pattern: string
+  name: string
+  reason: string
+  problem: BankProblem
 }
 
 export interface ImportItem {
