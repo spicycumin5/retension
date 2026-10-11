@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import digest
-from app.api import cards, dev, problems, stats
+from app.api import cards, dev, imports, problems, stats
 from app.config import get_settings
 from app.db import get_session
 from app.ratelimit import rate_limit
@@ -25,6 +25,7 @@ api.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix=
 api.include_router(problems.router)
 api.include_router(cards.router)
 api.include_router(stats.router)
+api.include_router(imports.router)
 if settings.is_dev:
     api.include_router(dev.router)
 

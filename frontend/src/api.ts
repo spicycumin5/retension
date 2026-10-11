@@ -48,6 +48,7 @@ export interface User {
   digest_hour: number
   daily_review_cap: number
   digest_enabled: boolean
+  leetcode_username: string | null
 }
 
 /** Ratings shown to users; values match the backend's UserRating. */
@@ -120,4 +121,17 @@ export interface PatternStats {
   avg_recall: number | null
   holds_days: number | null
   weakest: { card_id: number; problem: Problem; recall: number }[]
+}
+
+export interface ImportItem {
+  slug: string
+  title: string
+  url: string
+  solved_at: string
+}
+
+export interface ImportResult {
+  username: string
+  items: ImportItem[]
+  already_tracked: number
 }

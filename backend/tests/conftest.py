@@ -35,6 +35,13 @@ FAKE_PROBLEMS = {
 }
 
 
+# The real implementation, for tests that exercise it against a mocked HTTP transport.
+REAL_RECENT_ACCEPTED = leetcode.recent_accepted
+
+# username -> recent solves, newest first; tests may replace entries
+FAKE_RECENT: dict[str, list[leetcode.Solve]] = {}
+
+
 @pytest.fixture(autouse=True)
 async def _fresh_state(monkeypatch):
     async def fake_fetch(slug):
@@ -48,6 +55,13 @@ async def _fresh_state(monkeypatch):
                 return p.slug
         raise leetcode.ResolveError(f"No LeetCode problem #{n}")
 
+    async def fake_recent(username):
+        if username not in FAKE_RECENT:
+            raise leetcode.ResolveError(f"No LeetCode user named '{username}'")
+        return FAKE_RECENT[username]
+
+    FAKE_RECENT.clear()
+    monkeypatch.setattr(leetcode, "recent_accepted", fake_recent)
     monkeypatch.setattr(leetcode, "fetch_problem", fake_fetch)
     monkeypatch.setattr(leetcode, "slug_for_number", fake_slug_for_number)
     monkeypatch.setattr(ratelimit, "enabled", False)

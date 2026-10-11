@@ -115,7 +115,15 @@ const RATING_STYLE: Record<RatingValue, string> = {
   4: 'hover:border-easy hover:text-easy',
 }
 
-export function RatingButtons({ onRate, disabled }: { onRate: (r: RatingValue) => void; disabled?: boolean }) {
+export function RatingButtons({
+  onRate,
+  disabled,
+  compact = false,
+}: {
+  onRate: (r: RatingValue) => void
+  disabled?: boolean
+  compact?: boolean
+}) {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
       {RATINGS.map((r) => (
@@ -124,10 +132,13 @@ export function RatingButtons({ onRate, disabled }: { onRate: (r: RatingValue) =
           type="button"
           disabled={disabled}
           onClick={() => onRate(r.value)}
-          className={`rounded-lg border border-rule bg-sheet px-3 py-2.5 text-left transition-colors disabled:opacity-50 ${RATING_STYLE[r.value]}`}
+          title={compact ? r.hint : undefined}
+          className={`rounded-lg border border-rule bg-sheet text-left transition-colors disabled:opacity-50 ${
+            compact ? 'px-2.5 py-1.5 text-[15px]' : 'px-3 py-2.5'
+          } ${RATING_STYLE[r.value]}`}
         >
           <span className="block font-bold">{r.label}</span>
-          <span className="block text-sm text-muted">{r.hint}</span>
+          {!compact && <span className="block text-sm text-muted">{r.hint}</span>}
         </button>
       ))}
     </div>

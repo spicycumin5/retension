@@ -29,6 +29,7 @@ class User(SQLAlchemyBaseUserTableUUID, Base):
     daily_review_cap: Mapped[int] = mapped_column(SmallInteger, default=3)
     digest_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     last_digest_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    leetcode_username: Mapped[str | None] = mapped_column(String(40), nullable=True)
     unsubscribe_token: Mapped[str] = mapped_column(
         String(64), unique=True, default=lambda: uuid.uuid4().hex
     )
@@ -119,3 +120,14 @@ class Review(Base):
     rating: Mapped[int] = mapped_column(SmallInteger)
     duration_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reviewed_at: Mapped[datetime] = mapped_column(UTCDateTime)
+
+
+class DismissedImport(Base):
+    """A LeetCode solve the user chose not to track, so import stops offering it."""
+
+    __tablename__ = "dismissed_imports"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        GUID, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    slug: Mapped[str] = mapped_column(String(200), primary_key=True)

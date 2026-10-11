@@ -1,9 +1,111 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type Card, type RatingValue, type ResolveResult } from '../api'
+import { api, type Card, type ImportItem, type ImportResult, type RatingValue, type ResolveResult } from '../api'
 import { DifficultyTag, ErrorText, PatternPicker, RatingButtons } from '../components'
-import { inputClass, primaryButton, relativeDay, usePatterns } from '../lib'
+import { inputClass, primaryButton, relativeDay, useMe, usePatterns } from '../lib'
+
+function ImportRow({ item, onLogged }: { item: ImportItem; onLogged: (card: Card) => void }) {
+  const qc = useQueryClient()
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['import'] })
+    qc.invalidateQueries({ queryKey: ['queue'] })
+    qc.invalidateQueries({ queryKey: ['cards'] })
+  }
+  const log = useMutation({
+    mutationFn: async (rating: RatingValue) => {
+      const { problem } = await api<ResolveResult>('/problems/resolve', { method: 'POST', json: { query: item.slug } })
+      return api<Card>('/cards', {
+        method: 'POST',
+        json: { problem_id: problem.id, rating, solved_at: item.solved_at },
+      })
+    },
+    onSuccess: (card) => {
+      onLogged(card)
+      refresh()
+    },
+  })
+  const skip = useMutation({
+    mutationFn: () => api<void>('/import/leetcode/dismiss', { method: 'POST', json: { slug: item.slug } }),
+    onSuccess: refresh,
+  })
+  const busy = log.isPending || skip.isPending
+
+  return (
+    <li className="space-y-2 py-4 first:pt-0 last:pb-0">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+        <a href={item.url} target="_blank" rel="noreferrer" className="font-bold hover:text-teal hover:underline underline-offset-4">
+          {item.title}
+        </a>
+        <span className="text-[15px] text-muted">Solved {relativeDay(item.solved_at)}</span>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="grow">
+          <RatingButtons compact onRate={(r) => log.mutate(r)} disabled={busy} />
+        </div>
+        <button type="button" disabled={busy} onClick={() => skip.mutate()} className="px-2 text-[15px] text-muted underline underline-offset-4 hover:text-ink">
+          Don’t track
+        </button>
+      </div>
+      <ErrorText error={log.error ?? skip.error} />
+    </li>
+  )
+}
+
+const SHOWN_AT_FIRST = 5
+
+function RecentSolves({ onLogged }: { onLogged: (card: Card) => void }) {
+  const [showAll, setShowAll] = useState(false)
+  const me = useMe()
+  const username = me.data?.leetcode_username
+  const recent = useQuery({
+    queryKey: ['import', username],
+    queryFn: () => api<ImportResult>('/import/leetcode'),
+    enabled: !!username,
+    staleTime: 60_000,
+  })
+
+  if (!username) {
+    return (
+      <p className="text-[15px] text-muted">
+        Add your LeetCode username in <Link to="/settings" className="text-teal underline underline-offset-4">Settings</Link> to
+        pick from your recent solves instead of typing them.
+      </p>
+    )
+  }
+
+  return (
+    <section className="rounded-xl border border-rule bg-sheet p-5">
+      <h2 className="text-xl font-bold">Recent solves on LeetCode</h2>
+      {recent.isPending && <p className="mt-2 text-muted">Checking {username}’s recent solves…</p>}
+      <div className="mt-2">
+        <ErrorText error={recent.error} />
+      </div>
+      {recent.data &&
+        (recent.data.items.length ? (
+          <>
+            <p className="mt-1 mb-4 text-[15px] text-muted">
+              Rate how each one went to start tracking it. Reviews are scheduled from when you solved it.
+            </p>
+            <ul className="divide-y divide-rule">
+              {(showAll ? recent.data.items : recent.data.items.slice(0, SHOWN_AT_FIRST)).map((item) => (
+                <ImportRow key={item.slug} item={item} onLogged={onLogged} />
+              ))}
+            </ul>
+            {!showAll && recent.data.items.length > SHOWN_AT_FIRST && (
+              <button type="button" onClick={() => setShowAll(true)} className="mt-4 text-teal underline underline-offset-4">
+                Show {recent.data.items.length - SHOWN_AT_FIRST} more
+              </button>
+            )}
+          </>
+        ) : (
+          <p className="mt-1 text-[15px] text-muted">
+            You’re tracking all of {username}’s recent accepted solves. LeetCode only shares the latest 20.
+          </p>
+        ))}
+    </section>
+  )
+}
 
 function LogForm({ result, onLogged }: { result: ResolveResult; onLogged: (card: Card) => void }) {
   const qc = useQueryClient()
@@ -99,7 +201,27 @@ export default function AddPage() {
         </p>
       </section>
 
-      <form onSubmit={submit} className="flex flex-col gap-2 sm:flex-row">
+      {logged && (
+        <p role="status" className="rounded-xl border border-teal bg-teal-soft p-4">
+          <strong>{logged.problem.title}</strong> logged.{' '}
+          {new Date(logged.due) <= new Date() ? (
+            <>
+              It’s already due for review.{' '}
+              <Link to="/" className="text-teal underline underline-offset-4">Find it in today’s queue</Link>
+            </>
+          ) : (
+            <>
+              First review {relativeDay(logged.due)}.{' '}
+              <Link to="/" className="text-teal underline underline-offset-4">See today’s queue</Link>
+            </>
+          )}
+        </p>
+      )}
+
+      <RecentSolves onLogged={setLogged} />
+
+      <h2 className="text-xl font-bold">Look up a problem</h2>
+      <form onSubmit={submit} className="-mt-5 flex flex-col gap-2 sm:flex-row">
         <label htmlFor="query" className="sr-only">LeetCode URL, number or title</label>
         <input
           id="query"
@@ -115,14 +237,7 @@ export default function AddPage() {
       </form>
       <ErrorText error={resolve.error} />
 
-      {logged && (
-        <p role="status" className="rounded-xl border border-teal bg-teal-soft p-4">
-          <strong>{logged.problem.title}</strong> logged. First review {relativeDay(logged.due)}.{' '}
-          <Link to="/" className="text-teal underline underline-offset-4">See today’s queue</Link>
-        </p>
-      )}
-
-      {result && !logged && (
+      {result && (
         <section className="space-y-6 rounded-xl border border-rule bg-sheet p-5">
           <div>
             <h2 className="text-2xl font-bold">

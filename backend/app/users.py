@@ -5,6 +5,8 @@ from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin, schemas
 from fastapi_users.authentication import AuthenticationBackend, CookieTransport, JWTStrategy
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
+import re
+
 from pydantic import Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,11 +25,26 @@ def _check_tz(value: str | None) -> str | None:
     return value
 
 
+_LC_USERNAME = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+
+
+def _check_lc_username(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None  # blank clears it
+    if not _LC_USERNAME.match(value):
+        raise ValueError("LeetCode usernames use letters, numbers, - and _ only")
+    return value
+
+
 class UserRead(schemas.BaseUser[uuid.UUID]):
     timezone: str
     digest_hour: int
     daily_review_cap: int
     digest_enabled: bool
+    leetcode_username: str | None
 
 
 class UserCreate(schemas.BaseUserCreate):
@@ -40,7 +57,9 @@ class UserUpdate(schemas.BaseUserUpdate):
     digest_hour: int | None = Field(default=None, ge=0, le=23)
     daily_review_cap: int | None = Field(default=None, ge=1, le=50)
     digest_enabled: bool | None = None
+    leetcode_username: str | None = None
     _tz = field_validator("timezone")(_check_tz)
+    _lc = field_validator("leetcode_username")(_check_lc_username)
 
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):

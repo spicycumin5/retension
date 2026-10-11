@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, field_validator
 
 from app import patterns as pattern_catalog
 from app.scheduling import UserRating
@@ -43,6 +43,7 @@ class CardCreate(BaseModel):
     duration_sec: int | None = Field(default=None, ge=0, le=60 * 60 * 6)
     patterns: list[str] | None = None  # None = use defaults from LeetCode tags
     notes: str = Field(default="", max_length=10_000)
+    solved_at: AwareDatetime | None = None  # for imported solves; defaults to now
     _p = field_validator("patterns")(_validate_patterns)
 
 
@@ -93,3 +94,20 @@ class PatternStatsOut(BaseModel):
     avg_recall: float | None
     holds_days: float | None
     weakest: list[WeakCardOut]
+
+
+class ImportItem(BaseModel):
+    slug: str
+    title: str
+    url: str
+    solved_at: datetime
+
+
+class ImportOut(BaseModel):
+    username: str
+    items: list[ImportItem]  # recent solves not yet tracked or dismissed
+    already_tracked: int
+
+
+class DismissIn(BaseModel):
+    slug: str = Field(min_length=1, max_length=200)

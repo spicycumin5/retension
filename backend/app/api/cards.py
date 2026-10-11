@@ -54,10 +54,19 @@ async def _load_by_day(
     return Counter(scheduling.local_date(d, user.timezone) for d in dues)
 
 
+# How far back an imported solve may be dated.
+MAX_BACKDATE = timedelta(days=90)
+
+
 async def _review(
-    session: AsyncSession, user: User, card: Card, rating: scheduling.UserRating, duration_sec: int | None
+    session: AsyncSession,
+    user: User,
+    card: Card,
+    rating: scheduling.UserRating,
+    duration_sec: int | None,
+    at: datetime | None = None,
 ) -> None:
-    at = clock.now()
+    at = at or clock.now()
     new = scheduling.review(
         card.schedule_state(),
         rating,
@@ -93,8 +102,14 @@ async def create_card(
     if exists:
         raise HTTPException(409, "You already track this problem")
 
+    now = clock.now()
+    solved_at = body.solved_at or now
+    if solved_at > now + timedelta(minutes=5) or solved_at < now - MAX_BACKDATE:
+        raise HTTPException(422, "Solved time must be within the last 90 days")
+    solved_at = min(solved_at, now)
+
     patterns = body.patterns if body.patterns is not None else default_patterns(problem.lc_tags)
-    first = scheduling.new_card(clock.now())
+    first = scheduling.new_card(solved_at)
     card = Card(
         user_id=user.id,
         problem=problem,
@@ -105,9 +120,9 @@ async def create_card(
     )
     session.add(card)
     await session.flush()
-    await _review(session, user, card, body.rating, body.duration_sec)
+    await _review(session, user, card, body.rating, body.duration_sec, at=solved_at)
     await session.commit()
-    return to_out(card, clock.now())
+    return to_out(card, now)
 
 
 @router.get("/cards", response_model=list[CardOut])

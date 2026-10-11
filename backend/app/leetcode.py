@@ -1,6 +1,7 @@
 """Fetch problem metadata from LeetCode's public (unofficial) endpoints."""
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 import httpx
 
@@ -16,6 +17,14 @@ query q($slug: String!) {
   }
 }
 """
+
+_RECENT_QUERY = """
+query r($username: String!, $limit: Int!) {
+  matchedUser(username: $username) { username }
+  recentAcSubmissionList(username: $username, limit: $limit) { title titleSlug timestamp }
+}
+"""
+RECENT_LIMIT = 20  # LeetCode returns at most 20 regardless of the limit asked for
 
 _number_to_slug: dict[int, str] = {}
 
@@ -76,3 +85,33 @@ async def fetch_problem(slug: str) -> ProblemInfo:
         difficulty=q["difficulty"],
         lc_tags=[t["slug"] for t in q["topicTags"]],
     )
+
+
+@dataclass
+class Solve:
+    slug: str
+    title: str
+    solved_at: datetime
+
+
+async def recent_accepted(username: str) -> list[Solve]:
+    """Most recent accepted solve per problem, newest first."""
+    async with httpx.AsyncClient(timeout=10, headers=_HEADERS) as client:
+        resp = await client.post(
+            GRAPHQL_URL,
+            json={"query": _RECENT_QUERY, "variables": {"username": username, "limit": RECENT_LIMIT}},
+        )
+        resp.raise_for_status()
+    data = resp.json().get("data") or {}
+    if not data.get("matchedUser"):
+        raise ResolveError(f"No LeetCode user named '{username}'")
+    latest: dict[str, Solve] = {}
+    for sub in data.get("recentAcSubmissionList") or []:
+        solve = Solve(
+            slug=sub["titleSlug"],
+            title=sub["title"],
+            solved_at=datetime.fromtimestamp(int(sub["timestamp"]), tz=timezone.utc),
+        )
+        if solve.slug not in latest or solve.solved_at > latest[solve.slug].solved_at:
+            latest[solve.slug] = solve
+    return sorted(latest.values(), key=lambda s: s.solved_at, reverse=True)

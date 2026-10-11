@@ -14,6 +14,7 @@ export default function SettingsPage({ user }: { user: User }) {
   const [cap, setCap] = useState(String(user.daily_review_cap))
   const [digestEnabled, setDigestEnabled] = useState(user.digest_enabled)
   const [digestHour, setDigestHour] = useState(user.digest_hour)
+  const [lcUsername, setLcUsername] = useState(user.leetcode_username ?? '')
   const zones = useMemo(() => {
     const all = Intl.supportedValuesOf('timeZone')
     return all.includes(user.timezone) ? all : [user.timezone, ...all]
@@ -29,11 +30,13 @@ export default function SettingsPage({ user }: { user: User }) {
           daily_review_cap: Number(cap),
           digest_enabled: digestEnabled,
           digest_hour: digestHour,
+          leetcode_username: lcUsername.trim() || null,
         },
       }),
     onSuccess: (u) => {
       qc.setQueryData(['me'], u)
       qc.invalidateQueries({ queryKey: ['queue'] })
+      qc.invalidateQueries({ queryKey: ['import'] })
     },
   })
   const submit = (e: FormEvent) => {
@@ -83,6 +86,22 @@ export default function SettingsPage({ user }: { user: User }) {
                 </button>
               </>
             )}
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block font-bold">LeetCode username</span>
+          <input
+            className={inputClass}
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="Optional"
+            value={lcUsername}
+            onChange={(e) => setLcUsername(e.target.value)}
+          />
+          <span className="mt-1.5 block text-[15px] text-muted">
+            Lets Log a problem list your recent accepted solves, so you can rate them instead of typing each one.
+            Only your public profile is read.
           </span>
         </label>
 
