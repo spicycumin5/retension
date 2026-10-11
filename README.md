@@ -55,5 +55,6 @@ cd backend && .venv/Scripts/python -m pytest
 - `backend/app/scheduling.py` – pure FSRS + load-balancing + queue logic
 - `backend/app/api/` – problems (LeetCode lookup), cards, reviews, today's queue
 - `backend/app/digest.py`, `backend/app/jobs/` – daily reminder email and its hourly job
+- `backend/app/stats.py` – per-pattern recall, weakest first
 - `backend/app/patterns.py` – pattern list and LeetCode-tag mapping
 - `frontend/src/pages/` – Today, Log a problem, Library, Settings, auth screens

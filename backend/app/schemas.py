@@ -75,3 +75,21 @@ class QueueOut(BaseModel):
     cards: list[CardOut]
     overflow: int
     reviewed_today: int
+
+
+class WeakCardOut(BaseModel):
+    card_id: int
+    problem: ProblemOut
+    recall: float
+
+
+class PatternStatsOut(BaseModel):
+    pattern: str
+    name: str
+    practice_url: str
+    problems: int
+    due: int
+    lapses: int
+    avg_recall: float | None
+    holds_days: float | None
+    weakest: list[WeakCardOut]

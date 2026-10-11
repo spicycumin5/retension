@@ -109,3 +109,15 @@ export const login = (email: string, password: string) =>
     method: 'POST',
     body: new URLSearchParams({ username: email, password }),
   })
+
+export interface PatternStats {
+  pattern: string
+  name: string
+  practice_url: string
+  problems: number
+  due: number
+  lapses: number
+  avg_recall: number | null
+  holds_days: number | null
+  weakest: { card_id: number; problem: Problem; recall: number }[]
+}

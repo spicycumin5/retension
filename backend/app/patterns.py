@@ -50,6 +50,35 @@ TAG_TO_PATTERN: dict[str, str] = {
     "geometry": "math",
 }
 
+# The LeetCode tag that best represents each pattern, for "practice more" links.
+PRACTICE_TAG: dict[str, str] = {
+    "arrays-hashing": "hash-table",
+    "two-pointers": "two-pointers",
+    "sliding-window": "sliding-window",
+    "stack": "stack",
+    "monotonic-stack": "monotonic-stack",
+    "binary-search": "binary-search",
+    "linked-list": "linked-list",
+    "trees": "binary-tree",
+    "tries": "trie",
+    "heap": "heap-priority-queue",
+    "backtracking": "backtracking",
+    "graphs": "graph",
+    "topological-sort": "topological-sort",
+    "union-find": "union-find",
+    "dynamic-programming": "dynamic-programming",
+    "greedy": "greedy",
+    "intervals": "line-sweep",
+    "prefix-sum": "prefix-sum",
+    "bit-manipulation": "bit-manipulation",
+    "math": "math",
+}
+
+
+def practice_url(pattern: str) -> str:
+    return f"https://leetcode.com/problemset/?topicSlugs={PRACTICE_TAG[pattern]}"
+
+
 _TREE_TAGS = {"tree", "binary-tree", "binary-search-tree"}
 _TRAVERSAL_TAGS = {"breadth-first-search", "depth-first-search"}
 

@@ -6,6 +6,7 @@ import { secondaryButton, useMe } from './lib'
 import AddPage from './pages/Add'
 import { ForgotPage, LoginPage, ResetPage, SignupPage, UnsubscribePage, VerifyPage } from './pages/Auth'
 import LibraryPage from './pages/Library'
+import PatternsPage from './pages/Patterns'
 import SettingsPage from './pages/Settings'
 import TodayPage from './pages/Today'
 
@@ -39,6 +40,7 @@ function Shell({ children }: { children: ReactNode }) {
           <NavLink to="/" end className={link}>Today</NavLink>
           <NavLink to="/add" className={link}>Log a problem</NavLink>
           <NavLink to="/library" className={link}>Library</NavLink>
+          <NavLink to="/patterns" className={link}>Patterns</NavLink>
           <NavLink to="/settings" className={link}>Settings</NavLink>
           <button
             type="button"
@@ -130,6 +132,7 @@ export default function App() {
       <Route path="/" element={<Shell><TodayPage /></Shell>} />
       <Route path="/add" element={<Shell><AddPage /></Shell>} />
       <Route path="/library" element={<Shell><LibraryPage /></Shell>} />
+      <Route path="/patterns" element={<Shell><PatternsPage /></Shell>} />
       <Route path="/settings" element={<Shell><SettingsPage user={user} /></Shell>} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
