@@ -1,3 +1,4 @@
+from collections import Counter
 from datetime import datetime, timedelta
 
 from app import clock
@@ -75,6 +76,22 @@ async def test_queue_respects_cap_and_reports_overflow(user_client):
     clock.travel(timedelta(days=3))
     q = (await user_client.get("/queue/today")).json()
     assert len(q["cards"]) == 2 and q["overflow"] == 1
+
+
+async def test_bulk_additions_spread_across_days(user_client):
+    await user_client.patch("/users/me", json={"daily_review_cap": 1})
+    cards = [await add(user_client, q, rating=3) for q in ["739", "1", "217", "200"]]
+    assert len({datetime.fromisoformat(c["due"]).date() for c in cards}) == 4
+
+
+async def test_overdue_imports_spread_from_today(user_client):
+    await user_client.patch("/users/me", json={"daily_review_cap": 2})
+    solved_at = (clock.now() - timedelta(days=30)).isoformat()
+    cards = [await add(user_client, q, rating=3, solved_at=solved_at) for q in ["739", "1", "217", "200"]]
+    assert all(datetime.fromisoformat(c["due"]) >= clock.now() - timedelta(seconds=5) for c in cards)
+    assert len((await user_client.get("/queue/today")).json()["cards"]) == 2
+    days = Counter(datetime.fromisoformat(c["due"]).date() for c in cards)
+    assert sorted(days.values()) == [2, 2]
 
 
 async def test_patch_patterns_notes_suspend_and_filters(user_client):

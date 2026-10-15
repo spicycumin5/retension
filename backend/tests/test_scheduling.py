@@ -79,11 +79,43 @@ def test_balance_never_moves_to_today_or_earlier():
     assert s.local_date(moved, "UTC") > s.local_date(T0, "UTC")
 
 
+def test_balance_spills_past_a_full_window():
+    due = T0 + timedelta(days=2)
+    _, hi = s.balance_window(T0, due, "UTC")
+    load = Counter({hi - timedelta(days=i): 3 for i in range(10)} | {hi + timedelta(days=1): 3})
+    stays = s.balance(T0, due, "UTC", load, cap=3)
+    assert s.local_date(stays, "UTC") <= hi
+    spilled = s.balance(T0, due, "UTC", load, cap=3, spill=True)
+    assert s.local_date(spilled, "UTC") == hi + timedelta(days=2)
+
+
+def test_balance_brings_an_overdue_card_up_to_now():
+    solved = T0 - timedelta(days=30)
+    due = solved + timedelta(days=2)
+    assert s.balance(solved, due, "UTC", {}, cap=3, not_before=T0) == T0
+    full_today = {s.local_date(T0, "UTC"): 3}
+    moved = s.balance(solved, due, "UTC", full_today, cap=3, not_before=T0, spill=True)
+    assert s.local_date(moved, "UTC") == s.local_date(T0, "UTC") + timedelta(days=1)
+
+
+def test_only_first_reviews_spill(monkeypatch):
+    spills = []
+
+    def fake_balance(review_at, due, tz, load, cap, **kw):
+        spills.append(kw["spill"])
+        return due
+
+    monkeypatch.setattr(s, "balance", fake_balance)
+    card = first(UserRating.SLOW, load={}, cap=3)
+    s.review(card, UserRating.SLOW, card.due, load={}, cap=3)
+    assert spills == [True, False]
+
+
 def test_review_applies_balancing(monkeypatch):
     shifted = T0 + timedelta(days=42)
     calls = []
 
-    def fake_balance(review_at, due, tz, load, cap, latest=None):
+    def fake_balance(review_at, due, tz, load, cap, **_):
         calls.append((review_at, tz, cap))
         return shifted
 

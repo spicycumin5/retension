@@ -40,19 +40,22 @@ def to_out(card: Card, at: datetime) -> CardOut:
 
 
 async def _load_by_day(
-    session: AsyncSession, user: User, at: datetime, exclude_card_id: int
+    session: AsyncSession, user: User, now: datetime, exclude_card_id: int
 ) -> Counter[date]:
-    """How many of the user's active cards fall due on each local day in the next year."""
+    """How many of the user's active cards fall due on each local day in the next year.
+
+    Overdue cards count toward today, since that's when they'll be shown.
+    """
     dues = await session.scalars(
         select(Card.due).where(
             Card.user_id == user.id,
             Card.id != exclude_card_id,
             Card.suspended.is_(False),
-            Card.due >= at,
-            Card.due < at + timedelta(days=366),
+            Card.due < now + timedelta(days=366),
         )
     )
-    return Counter(scheduling.local_date(d, user.timezone) for d in dues)
+    today = scheduling.local_date(now, user.timezone)
+    return Counter(max(scheduling.local_date(d, user.timezone), today) for d in dues)
 
 
 # How far back an imported solve may be dated.
@@ -68,16 +71,18 @@ async def _review(
     at: datetime | None = None,
     mode: str = "full",
 ) -> None:
-    at = at or clock.now()
+    now = clock.now()
+    at = at or now
     new = scheduling.review(
         card.schedule_state(),
         rating,
         at,
         tz=user.timezone,
-        load=await _load_by_day(session, user, at, card.id),
+        load=await _load_by_day(session, user, now, card.id),
         cap=user.daily_review_cap,
         duration_sec=duration_sec,
         max_interval_days=user.max_interval_days,
+        now=now,
     )
     apply_state(card, new)
     session.add(

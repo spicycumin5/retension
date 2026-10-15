@@ -106,21 +106,40 @@ def balance(
     load: Mapping[date, int],
     cap: int,
     latest: date | None = None,
+    not_before: datetime | None = None,
+    spill: bool = False,
 ) -> datetime:
     """Move `due` to a lighter day nearby if its day already has `cap` or more cards.
 
     `latest` bounds how late it may move (the user's maximum interval).
+    `not_before` is the earliest it may land (now, for a backdated solve that is
+    already overdue). With `spill`, a card whose whole window is full moves on to
+    the first later day with room, so problems added in bulk spread out instead
+    of piling onto the same few days.
     """
-    target = local_date(due, tz)
-    if load.get(target, 0) < cap:
-        return due
+    day = local_date(due, tz)
+    target = day
     lo, hi = balance_window(review_at, due, tz)
+    if not_before is not None:
+        floor = local_date(not_before, tz)
+        target, lo, hi = max(target, floor), max(lo, floor), max(hi, floor)
     if latest is not None:
         hi = max(min(hi, latest), lo)
-    days = [lo + timedelta(days=i) for i in range((hi - lo).days + 1)]
-    # Lightest day wins, then closest to target, then later (spacing longer is safer).
-    best = min(days, key=lambda d: (load.get(d, 0), abs((d - target).days), -(d - target).days))
-    return due + timedelta(days=(best - target).days)
+    if load.get(target, 0) < cap:
+        best = target
+    else:
+        days = [lo + timedelta(days=i) for i in range((hi - lo).days + 1)]
+        # Lightest day wins, then closest to target, then later (spacing longer is safer).
+        best = min(days, key=lambda d: (load.get(d, 0), abs((d - target).days), -(d - target).days))
+        if spill and load.get(best, 0) >= cap:
+            # Past the max interval if need be: a full queue would make it wait that long anyway.
+            best = hi + timedelta(days=1)
+            while load.get(best, 0) >= cap:
+                best += timedelta(days=1)
+    if best == day:
+        return due
+    moved = due + timedelta(days=(best - day).days)
+    return moved if not_before is None else max(moved, not_before)
 
 
 def review(
@@ -133,7 +152,9 @@ def review(
     cap: int | None = None,
     duration_sec: int | None = None,
     max_interval_days: int | None = None,
+    now: datetime | None = None,
 ) -> CardState:
+    """Apply a rating at `at`. `now` differs from `at` only for a backdated solve."""
     updated, _ = _scheduler.review_card(
         card.to_fsrs(),
         to_fsrs_rating(rating),
@@ -147,7 +168,7 @@ def review(
         due = min(due, limit)
         latest = local_date(limit, tz)
     if load is not None and cap is not None:
-        due = balance(at, due, tz, load, cap, latest=latest)
+        due = balance(at, due, tz, load, cap, latest=latest, not_before=now, spill=card.reps == 0)
     lapsed = rating == UserRating.FAILED and card.reps > 0
     return CardState(
         due=due,
