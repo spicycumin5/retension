@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type Card, type Pattern } from '../api'
-import { DifficultyTag, ErrorText, ForgettingCurve, PatternChips, PatternPicker } from '../components'
-import { inputClass, primaryButton, relativeDay, secondaryButton, usePatterns } from '../lib'
+import { DifficultyTag, ErrorText, PatternChips, PatternPicker, Thread } from '../components'
+import { inputClass, primaryButton, relativeDay, secondaryButton, tensionLabel, tensionOf, usePatterns } from '../lib'
 
 type Status = 'all' | 'due' | 'suspended'
 
@@ -108,7 +108,12 @@ function Row({ card, patterns }: { card: Card; patterns: Pattern[] | undefined }
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
           <span className="hidden sm:block">
-            <ForgettingCurve card={card} width={104} height={32} />
+            <Thread
+              tension={tensionOf(card.retrievability)}
+              knots={card.lapses}
+              label={`${tensionLabel(tensionOf(card.retrievability))}: about ${Math.round(card.retrievability * 100)}% likely you still remember this`}
+              className="h-9 w-[120px]"
+            />
           </span>
           <button
             type="button"

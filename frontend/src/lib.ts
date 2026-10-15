@@ -57,3 +57,15 @@ export const primaryButton =
 
 export const secondaryButton =
   'rounded-lg border border-rule bg-sheet px-4 py-2.5 font-bold text-ink hover:border-teal disabled:opacity-50'
+
+/**
+ * How taut a problem's thread is, from 1 (just reviewed) to 0 (about to snap).
+ * Reviews come due at 90% recall, which lands in "fraying"; overdue problems sink toward 0.
+ */
+export function tensionOf(retrievability: number) {
+  return Math.min(Math.max((retrievability - 0.75) / (0.98 - 0.75), 0), 1)
+}
+
+export function tensionLabel(tension: number) {
+  return tension >= 0.7 ? 'Taut' : tension >= 0.3 ? 'Fraying' : 'About to snap'
+}

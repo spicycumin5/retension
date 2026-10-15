@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, QUICK_RATINGS, type Card, type Queue, type RatingValue, type Suggestion } from '../api'
-import { DifficultyTag, ErrorText, ForgettingCurve, PatternChips, RatingButtons } from '../components'
-import { formatClock, primaryButton, relativeDay, secondaryButton, usePatterns, useStopwatch } from '../lib'
+import { DifficultyTag, ErrorText, PatternChips, RatingButtons, Thread } from '../components'
+import { formatClock, primaryButton, relativeDay, secondaryButton, tensionLabel, tensionOf, usePatterns, useStopwatch } from '../lib'
 
 const QUICK_SECONDS = 120
 
@@ -13,12 +13,17 @@ function Notes({ text }: { text: string }) {
   return <p className="border-l-2 border-rule pl-3 text-[15px] text-muted whitespace-pre-line">{text}</p>
 }
 
+// How long the thread animation plays after a rating before the row leaves the list.
+const SNAP_MS = 450
+const SETTLE_MS = 1000
+
 function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextDue: string) => void }) {
   const qc = useQueryClient()
   const patterns = usePatterns()
   const [phase, setPhase] = useState<Phase>('idle')
   const [peek, setPeek] = useState(false)
   const [seconds] = useStopwatch(phase === 'solving' || phase === 'quick')
+  const [outcome, setOutcome] = useState<{ updated: Card; failed: boolean; snapped: boolean } | null>(null)
   const quick = phase === 'quick' || phase === 'quick-check'
   const review = useMutation({
     mutationFn: (rating: RatingValue) =>
@@ -26,20 +31,31 @@ function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextD
         method: 'POST',
         json: { rating, duration_sec: seconds > 0 ? seconds : null, mode: quick ? 'quick' : 'full' },
       }),
-    onSuccess: (updated) => {
-      onDone(card.problem.title, updated.due)
-      qc.invalidateQueries({ queryKey: ['queue'] })
-      qc.invalidateQueries({ queryKey: ['cards'] })
+    onSuccess: (updated, rating) => {
+      // A failed review snaps the thread before it's retied; any other rating pulls it taut.
+      const failed = rating === 1
+      setOutcome({ updated, failed, snapped: failed })
+      if (failed) setTimeout(() => setOutcome((o) => o && { ...o, snapped: false }), SNAP_MS)
+      setTimeout(
+        () => {
+          onDone(card.problem.title, updated.due)
+          qc.invalidateQueries({ queryKey: ['queue'] })
+          qc.invalidateQueries({ queryKey: ['cards'] })
+        },
+        (failed ? SNAP_MS : 0) + SETTLE_MS,
+      )
     },
   })
 
   const { problem } = card
-  const pct = Math.round(card.retrievability * 100)
+  const shown = outcome?.updated ?? card
+  const tension = outcome?.snapped ? 0 : tensionOf(shown.retrievability)
+  const pct = Math.round(shown.retrievability * 100)
   const remaining = Math.max(QUICK_SECONDS - seconds, 0)
 
   return (
     <li className="rounded-xl border border-rule bg-sheet p-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-2">
           <h2 className="text-xl font-bold leading-tight">
             <a href={problem.url} target="_blank" rel="noreferrer" className="hover:text-teal hover:underline underline-offset-4">
@@ -54,14 +70,29 @@ function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextD
           </p>
           <PatternChips slugs={card.patterns} patterns={patterns.data} />
         </div>
-        <figure className="hidden shrink-0 text-right sm:block">
-          <ForgettingCurve card={card} />
-          <figcaption className="mt-1 text-sm text-muted">{pct}% likely to recall</figcaption>
+        <figure className="shrink-0 sm:text-right">
+          <Thread
+            tension={tension}
+            knots={shown.lapses}
+            snapped={outcome?.snapped}
+            label={`${tensionLabel(tension)}: about ${pct}% likely you still remember this`}
+            className="h-12 w-40"
+          />
+          <figcaption className="mt-1 text-sm text-muted" aria-hidden="true">
+            {outcome?.snapped ? 'Snapped' : `${tensionLabel(tension)} · ${pct}% likely to recall`}
+          </figcaption>
         </figure>
       </div>
 
       <div className="mt-4 space-y-3">
-        {phase === 'idle' && (
+        {outcome && (
+          <p className="font-bold" aria-live="polite">
+            {outcome.failed ? 'Snapped, then retied with a knot.' : 'Pulled taut.'}{' '}
+            <span className="font-normal text-muted">Next review {relativeDay(outcome.updated.due)}.</span>
+          </p>
+        )}
+
+        {!outcome && phase === 'idle' && (
           <>
             <div className="flex flex-wrap gap-2">
               <a
@@ -121,7 +152,7 @@ function ReviewRow({ card, onDone }: { card: Card; onDone: (title: string, nextD
           </div>
         )}
 
-        {(phase === 'rating' || phase === 'quick-check') && (
+        {!outcome && (phase === 'rating' || phase === 'quick-check') && (
           <div className="space-y-3">
             {phase === 'quick-check' && (
               <p className="text-[15px]">

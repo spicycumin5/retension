@@ -77,6 +77,26 @@ h3 {
   color: var(--ink);
 }
 
+/* The last strand of a thread about to snap trembles. */
+.thread-strain {
+  animation: thread-strain 0.14s ease-in-out infinite alternate;
+}
+
+@keyframes thread-strain {
+  from {
+    transform: translateY(-0.5px);
+  }
+  to {
+    transform: translateY(0.5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thread-strain {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
