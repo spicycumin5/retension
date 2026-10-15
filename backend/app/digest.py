@@ -125,14 +125,19 @@ async def send_due_digests(session: AsyncSession, at: datetime) -> RunResult:
         queue, overflow = scheduling.build_queue(
             cards, Card.schedule_state, at, user.timezone, user.daily_review_cap
         )
+        # Record the day before sending, so a send that succeeds but is followed by a crash or a
+        # failed commit can't be sent again next hour. A missed email beats a duplicate every hour.
+        previous = user.last_digest_on
+        user.last_digest_on = local_today
+        await session.commit()
         try:
             await email.sender.send(compose(user, queue, overflow))
         except Exception:
             log.exception("digest send failed for user %s", user.id)
+            user.last_digest_on = previous
+            await session.commit()
             result.failed += 1
             continue
-        user.last_digest_on = local_today
-        await session.commit()
         result.sent += 1
     return result
 

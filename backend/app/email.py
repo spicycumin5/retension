@@ -78,17 +78,25 @@ class SMTPSender:
         return msg
 
     def _send_sync(self, msg: EmailMessage) -> None:
-        with smtplib.SMTP(self.host, self.port, timeout=20) as smtp:
-            smtp.starttls()
-            try:
-                smtp.login(self.username, self.password)
-            except (smtplib.SMTPAuthenticationError, smtplib.SMTPServerDisconnected) as e:
-                # Gmail often just drops the connection on bad credentials.
-                raise EmailLoginError(
-                    f"{self.host} rejected the login for {self.username}. For Gmail, SMTP_PASSWORD must be "
-                    "an app password (needs 2-Step Verification), not your account password."
-                ) from e
-            smtp.send_message(msg)
+        accepted = False
+        try:
+            with smtplib.SMTP(self.host, self.port, timeout=20) as smtp:
+                smtp.starttls()
+                try:
+                    smtp.login(self.username, self.password)
+                except (smtplib.SMTPAuthenticationError, smtplib.SMTPServerDisconnected) as e:
+                    # Gmail often just drops the connection on bad credentials.
+                    raise EmailLoginError(
+                        f"{self.host} rejected the login for {self.username}. For Gmail, SMTP_PASSWORD must be "
+                        "an app password (needs 2-Step Verification), not your account password."
+                    ) from e
+                smtp.send_message(msg)
+                accepted = True
+        except (smtplib.SMTPException, OSError):
+            # Once the server has accepted the message it will be delivered, so an error while
+            # closing the connection isn't a failed send; raising would make callers send it again.
+            if not accepted:
+                raise
 
     async def send(self, message: Message) -> None:
         await asyncio.to_thread(self._send_sync, self.build(message))

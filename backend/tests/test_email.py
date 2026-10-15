@@ -50,6 +50,26 @@ async def test_smtp_sender_uses_starttls_login_and_builds_multipart(monkeypatch)
     assert msg.get_body("html").get_content().strip() == "<p>html body</p>"
 
 
+async def test_smtp_error_after_acceptance_is_not_a_failed_send(monkeypatch):
+    import pytest
+
+    class DroppedOnQuit(FakeSMTP):
+        def __exit__(self, *exc):
+            raise email.smtplib.SMTPServerDisconnected("Connection unexpectedly closed")
+
+    class DroppedBeforeSend(FakeSMTP):
+        def send_message(self, msg):
+            raise email.smtplib.SMTPServerDisconnected("Connection unexpectedly closed")
+
+    sender = email.SMTPSender("smtp.gmail.com", 587, "me@gmail.com", "apppassword", "me@gmail.com")
+    message = email.Message(to="you@example.com", subject="s", text="t")
+    monkeypatch.setattr(email.smtplib, "SMTP", DroppedOnQuit)
+    await sender.send(message)
+    monkeypatch.setattr(email.smtplib, "SMTP", DroppedBeforeSend)
+    with pytest.raises(email.smtplib.SMTPServerDisconnected):
+        await sender.send(message)
+
+
 async def test_smtp_login_failure_explains_app_passwords(monkeypatch):
     import pytest
 

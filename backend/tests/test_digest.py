@@ -2,9 +2,11 @@ from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
+from sqlalchemy import select
 
 from app import clock, digest, email
 from app.db import SessionLocal
+from app.models import User
 from tests.conftest import signup
 from tests.test_api import add
 
@@ -90,6 +92,23 @@ async def test_failed_send_is_retried_next_run(seoul_user, monkeypatch):
     assert (await run(seoul(3, 8))).failed == 1
     monkeypatch.setattr(email.sender, "send", real_send)
     assert (await run(seoul(3, 9))).sent == 1
+
+
+async def test_day_is_recorded_before_sending(seoul_user, monkeypatch):
+    # If the job dies right after the send, the next run must not send the same digest again.
+    real_send = email.sender.send
+    recorded = []
+
+    async def check_then_send(message):
+        async with SessionLocal() as session:
+            user = await session.scalar(select(User).where(User.email == "s@example.com"))
+            recorded.append(user.last_digest_on)
+        await real_send(message)
+
+    monkeypatch.setattr(email.sender, "send", check_then_send)
+    at = seoul(3, 8)
+    assert (await run(at)).sent == 1
+    assert recorded == [at.date()]
 
 
 async def test_unsubscribe(seoul_user):
