@@ -20,9 +20,10 @@ class Settings(BaseSettings):
     # Built frontend to serve from the API process (production). Empty = don't serve.
     static_dir: str = ""
 
-    email_backend: Literal["console", "resend", "smtp"] = "console"
+    email_backend: Literal["console", "resend", "smtp", "brevo"] = "console"
     email_from: str = "Recall <reminders@example.com>"
     resend_api_key: str = ""
+    brevo_api_key: str = ""
     # SMTP defaults suit Gmail with an app password.
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
@@ -62,6 +63,8 @@ class Settings(BaseSettings):
                 raise ValueError("SECRET must be set to a random string of 32+ characters outside dev")
             if self.email_backend == "resend" and not self.resend_api_key:
                 raise ValueError("RESEND_API_KEY is required when EMAIL_BACKEND=resend")
+            if self.email_backend == "brevo" and not self.brevo_api_key:
+                raise ValueError("BREVO_API_KEY is required when EMAIL_BACKEND=brevo")
             if self.email_backend == "smtp" and not (self.smtp_username and self.smtp_password):
                 raise ValueError("SMTP_USERNAME and SMTP_PASSWORD are required when EMAIL_BACKEND=smtp")
         return self

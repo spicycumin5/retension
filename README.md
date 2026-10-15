@@ -34,9 +34,11 @@ In dev, emails (verification, password reset) are printed to the backend console
 
 ## Deploy for free
 
-Four free services: **Render** runs the app (one Docker web service serving the API under
+Five free services: **Render** runs the app (one Docker web service serving the API under
 `/api` plus the built frontend), **Neon** hosts Postgres, **GitHub Actions** runs the hourly
-reminder job, and **Gmail** sends the email.
+reminder job, and **Gmail** sends the reminders. Free Render services can't make outbound SMTP
+connections, so the site's own emails (verification, password reset) go through **Brevo**'s
+HTTPS API from the same Gmail address.
 
 1. **Gmail app password.** Turn on 2-Step Verification for your Google account, then create an
    app password (Google Account, then Security, then App passwords). Use it instead of your
@@ -45,14 +47,16 @@ reminder job, and **Gmail** sends the email.
    `.venv/Scripts/python -m app.jobs.send_test_email you@gmail.com`.
 2. **Neon.** Create a free project and copy its connection string
    (`postgresql://...?sslmode=require`). It works as-is; the app converts it for its driver.
-3. **Render.** New, then Blueprint, then pick this repo. When prompted, set `DATABASE_URL`
+3. **Brevo.** Create a free account, add your Gmail address under Senders (Brevo emails it a
+   confirmation link), then create an API key under SMTP & API, then API keys.
+4. **Render.** New, then Blueprint, then pick this repo. When prompted, set `DATABASE_URL`
    (from Neon), `FRONTEND_URL` (the app's onrender.com URL; set it after the first deploy if
-   you don't know it yet), `EMAIL_FROM` (e.g. `Recall <you@gmail.com>`), `SMTP_USERNAME`
-   (your Gmail address) and `SMTP_PASSWORD` (the app password). Migrations run when the
-   service starts.
-4. **GitHub Actions.** In the repo's Settings, then Secrets and variables, then Actions, add
-   `DATABASE_URL`, `FRONTEND_URL`, `EMAIL_FROM`, `SMTP_USERNAME` and `SMTP_PASSWORD` with the
-   same values. Then open the Actions tab, pick "Daily reminder emails" and use "Run workflow"
+   you don't know it yet), `EMAIL_FROM` (e.g. `Recall <you@gmail.com>`) and `BREVO_API_KEY`.
+   Migrations run when the service starts.
+5. **GitHub Actions.** In the repo's Settings, then Secrets and variables, then Actions, add
+   `DATABASE_URL`, `FRONTEND_URL`, `EMAIL_FROM`, `SMTP_USERNAME` (your Gmail address) and
+   `SMTP_PASSWORD` (the app password). GitHub's runners can use SMTP, so reminders go through
+   Gmail directly. Then open the Actions tab, pick "Daily reminder emails" and use "Run workflow"
    once to check it.
 
 Limits to know: the free Render service sleeps after 15 idle minutes and takes 30 to 60 seconds

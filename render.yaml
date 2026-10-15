@@ -1,6 +1,8 @@
 # Render Blueprint for the free setup: one free web service (API + frontend).
 # The database is Neon (free) and the hourly reminder job runs on GitHub Actions
 # (.github/workflows/digest.yml), so nothing here is billed.
+# Free Render services can't make outbound SMTP connections, so the site sends its emails
+# (verification, password reset) through Brevo's HTTPS API instead of Gmail.
 # Deploy: Render dashboard -> New -> Blueprint -> pick this repo.
 services:
   - type: web
@@ -14,7 +16,7 @@ services:
       - key: COOKIE_SECURE
         value: "true"
       - key: EMAIL_BACKEND
-        value: smtp
+        value: brevo
       # Set these in the dashboard when prompted:
       - key: DATABASE_URL # Neon connection string
         sync: false
@@ -22,7 +24,5 @@ services:
         sync: false
       - key: EMAIL_FROM # e.g. Recall <you@gmail.com>
         sync: false
-      - key: SMTP_USERNAME # your Gmail address
-        sync: false
-      - key: SMTP_PASSWORD # a Gmail app password, not your account password
+      - key: BREVO_API_KEY # Brevo -> SMTP & API -> API keys
         sync: false

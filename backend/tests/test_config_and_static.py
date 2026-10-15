@@ -23,6 +23,11 @@ def test_production_resend_requires_key():
         Settings(env="production", secret="x" * 40, email_backend="resend")
 
 
+def test_production_brevo_requires_key():
+    with pytest.raises(ValidationError, match="BREVO_API_KEY"):
+        Settings(env="production", secret="x" * 40, email_backend="brevo")
+
+
 async def test_spa_fallback_serves_index_for_client_routes(tmp_path):
     (tmp_path / "index.html").write_text("<html>app</html>")
     (tmp_path / "assets").mkdir()

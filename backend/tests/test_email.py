@@ -50,6 +50,28 @@ async def test_smtp_sender_uses_starttls_login_and_builds_multipart(monkeypatch)
     assert msg.get_body("html").get_content().strip() == "<p>html body</p>"
 
 
+async def test_brevo_payload_splits_sender_and_keeps_unsubscribe_headers():
+    sender = email.BrevoSender("key", "Recall <me@gmail.com>")
+    payload = sender.payload(
+        email.Message(
+            to="you@example.com",
+            subject="s",
+            text="plain",
+            html="<p>html</p>",
+            headers={"List-Unsubscribe": "<https://x/unsub>"},
+        )
+    )
+    assert payload == {
+        "sender": {"name": "Recall", "email": "me@gmail.com"},
+        "to": [{"email": "you@example.com"}],
+        "subject": "s",
+        "textContent": "plain",
+        "htmlContent": "<p>html</p>",
+        "headers": {"List-Unsubscribe": "<https://x/unsub>"},
+    }
+    assert email.BrevoSender("key", "me@gmail.com").sender == {"email": "me@gmail.com"}
+
+
 async def test_smtp_error_after_acceptance_is_not_a_failed_send(monkeypatch):
     import pytest
 

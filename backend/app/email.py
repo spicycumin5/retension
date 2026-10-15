@@ -1,8 +1,9 @@
-"""Outgoing email: a console backend for dev/tests, and SMTP (e.g. Gmail) or Resend for real."""
+"""Outgoing email: a console backend for dev/tests, and SMTP (e.g. Gmail), Brevo or Resend for real."""
 import asyncio
 import smtplib
 from dataclasses import dataclass, field
 from email.message import EmailMessage
+from email.utils import parseaddr
 from typing import Protocol
 
 import httpx
@@ -50,6 +51,38 @@ class ResendSender:
             payload["headers"] = message.headers
         async with httpx.AsyncClient(timeout=15) as client:
             resp = await client.post(self.URL, json=payload, headers={"Authorization": f"Bearer {self.api_key}"})
+            resp.raise_for_status()
+
+
+class BrevoSender:
+    """Sends through Brevo's HTTPS API, for hosts that block outbound SMTP (Render's free plan does).
+
+    The from address must be a verified sender in Brevo; a single verified Gmail address works.
+    """
+
+    URL = "https://api.brevo.com/v3/smtp/email"
+
+    def __init__(self, api_key: str, from_addr: str) -> None:
+        self.api_key = api_key
+        name, addr = parseaddr(from_addr)
+        self.sender = {"name": name, "email": addr} if name else {"email": addr}
+
+    def payload(self, message: Message) -> dict:
+        payload = {
+            "sender": self.sender,
+            "to": [{"email": message.to}],
+            "subject": message.subject,
+            "textContent": message.text,
+        }
+        if message.html:
+            payload["htmlContent"] = message.html
+        if message.headers:
+            payload["headers"] = message.headers
+        return payload
+
+    async def send(self, message: Message) -> None:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(self.URL, json=self.payload(message), headers={"api-key": self.api_key})
             resp.raise_for_status()
 
 
@@ -106,6 +139,8 @@ def _make_sender() -> EmailSender:
     s = get_settings()
     if s.email_backend == "resend":
         return ResendSender(s.resend_api_key, s.email_from)
+    if s.email_backend == "brevo":
+        return BrevoSender(s.brevo_api_key, s.email_from)
     if s.email_backend == "smtp":
         return SMTPSender(s.smtp_host, s.smtp_port, s.smtp_username, s.smtp_password, s.email_from)
     return ConsoleSender()
