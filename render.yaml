@@ -22,7 +22,7 @@ services:
         sync: false
       - key: FRONTEND_URL # e.g. https://recall-xxxx.onrender.com
         sync: false
-      - key: EMAIL_FROM # e.g. Recall <you@gmail.com>
+      - key: EMAIL_FROM # e.g. Retension <you@gmail.com>
         sync: false
       - key: BREVO_API_KEY # Brevo -> SMTP & API -> API keys
         sync: false

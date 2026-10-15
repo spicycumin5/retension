@@ -81,7 +81,7 @@ export function SignupPage() {
     <>
       <h1 className="text-4xl font-bold">Stop re-learning problems you already solved</h1>
       <p className="mt-3 text-muted">
-        Log each LeetCode problem after you solve it. Recall works out when you’re about to forget it and
+        Log each LeetCode problem after you solve it. Retension works out when you’re about to forget it and
         puts it back in front of you.
       </p>
       <form onSubmit={submit} className="mt-8 space-y-4">
@@ -140,7 +140,7 @@ export function VerifyPage() {
       {m.isError && (
         <div className="mt-3 space-y-3">
           <ErrorText error={m.error} />
-          <Link to="/" className="text-teal underline underline-offset-4">Go to Recall</Link>
+          <Link to="/" className="text-teal underline underline-offset-4">Go to Retension</Link>
         </div>
       )}
     </>

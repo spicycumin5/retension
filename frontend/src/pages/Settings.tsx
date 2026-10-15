@@ -77,7 +77,7 @@ export default function SettingsPage({ user }: { user: User }) {
           />
           <span className="mt-1.5 block text-[15px] text-muted">
             A full re-solve takes 20–40 minutes, so a small number you’ll actually do beats a big one you’ll skip.
-            Recall spreads reviews out so no day goes over this.
+            Retension spreads reviews out so no day goes over this.
           </span>
         </label>
 

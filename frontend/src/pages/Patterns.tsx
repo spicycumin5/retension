@@ -85,7 +85,7 @@ function PatternRow({ s }: { s: PatternStats }) {
                 <DifficultyTag difficulty={s.next_problem.difficulty} />
               </p>
             ) : (
-              <p className="text-muted">You track every problem Recall knows for this pattern.</p>
+              <p className="text-muted">You track every problem Retension knows for this pattern.</p>
             )}
             <a href={s.practice_url} target="_blank" rel="noreferrer" className="mt-1 inline-block text-muted underline underline-offset-4">
               Browse all {s.name} problems on LeetCode

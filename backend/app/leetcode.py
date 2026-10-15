@@ -7,7 +7,7 @@ import httpx
 
 GRAPHQL_URL = "https://leetcode.com/graphql"
 ALL_PROBLEMS_URL = "https://leetcode.com/api/problems/all/"
-_HEADERS = {"User-Agent": "Mozilla/5.0 (Recall spaced-repetition app)", "Referer": "https://leetcode.com"}
+_HEADERS = {"User-Agent": "Mozilla/5.0 (Retension spaced-repetition app)", "Referer": "https://leetcode.com"}
 _URL_RE = re.compile(r"leetcode\.(?:com|cn)/problems/([a-z0-9-]+)")
 
 _QUESTION_QUERY = """

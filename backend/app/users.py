@@ -88,16 +88,16 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         link = f"{settings.frontend_url}/verify?token={token}"
         await email.send(
             user.email,
-            "Verify your Recall account",
-            f"Welcome to Recall! Confirm your email address:\n\n{link}\n",
+            "Verify your Retension account",
+            f"Welcome to Retension! Confirm your email address:\n\n{link}\n",
         )
 
     async def on_after_forgot_password(self, user: User, token: str, request: Request | None = None) -> None:
         link = f"{settings.frontend_url}/reset-password?token={token}"
         await email.send(
             user.email,
-            "Reset your Recall password",
-            f"Someone asked to reset your Recall password. If it was you:\n\n{link}\n\n"
+            "Reset your Retension password",
+            f"Someone asked to reset your Retension password. If it was you:\n\n{link}\n\n"
             "If not, you can ignore this email.",
         )
 

@@ -14,7 +14,7 @@ from app.users import UserCreate, UserRead, UserUpdate, auth_backend, fastapi_us
 settings = get_settings()
 
 # All API routes live on this app, mounted at /api below.
-api = FastAPI(title="Recall API")
+api = FastAPI(title="Retension API")
 
 auth_limit = [Depends(rate_limit("auth", 10, 60))]
 api.include_router(fastapi_users.get_auth_router(auth_backend), prefix="/auth", tags=["auth"], dependencies=auth_limit)

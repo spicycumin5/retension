@@ -30,7 +30,7 @@ class FakeSMTP:
 async def test_smtp_sender_uses_starttls_login_and_builds_multipart(monkeypatch):
     monkeypatch.setattr(email.smtplib, "SMTP", FakeSMTP)
     FakeSMTP.instances.clear()
-    sender = email.SMTPSender("smtp.gmail.com", 587, "me@gmail.com", "apppassword", "Recall <me@gmail.com>")
+    sender = email.SMTPSender("smtp.gmail.com", 587, "me@gmail.com", "apppassword", "Retension <me@gmail.com>")
     await sender.send(
         email.Message(
             to="you@example.com",
@@ -44,14 +44,14 @@ async def test_smtp_sender_uses_starttls_login_and_builds_multipart(monkeypatch)
     assert (smtp.host, smtp.port) == ("smtp.gmail.com", 587)
     assert smtp.calls == ["starttls", "login me@gmail.com apppassword", "send", "quit"]
     msg = smtp.sent
-    assert msg["From"] == "Recall <me@gmail.com>" and msg["To"] == "you@example.com"
+    assert msg["From"] == "Retension <me@gmail.com>" and msg["To"] == "you@example.com"
     assert msg["List-Unsubscribe"] == "<https://x/unsub>"
     assert msg.get_body("plain").get_content().strip() == "plain body"
     assert msg.get_body("html").get_content().strip() == "<p>html body</p>"
 
 
 async def test_brevo_payload_splits_sender_and_keeps_unsubscribe_headers():
-    sender = email.BrevoSender("key", "Recall <me@gmail.com>")
+    sender = email.BrevoSender("key", "Retension <me@gmail.com>")
     payload = sender.payload(
         email.Message(
             to="you@example.com",
@@ -62,7 +62,7 @@ async def test_brevo_payload_splits_sender_and_keeps_unsubscribe_headers():
         )
     )
     assert payload == {
-        "sender": {"name": "Recall", "email": "me@gmail.com"},
+        "sender": {"name": "Retension", "email": "me@gmail.com"},
         "to": [{"email": "you@example.com"}],
         "subject": "s",
         "textContent": "plain",

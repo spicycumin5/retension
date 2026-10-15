@@ -208,7 +208,7 @@ export default function TodayPage() {
             ? 'Each one is near the point where you’d start forgetting it. Solve it again from scratch, then rate how it went.'
             : reviewed_today > 0
               ? `You logged ${reviewed_today} ${reviewed_today === 1 ? 'solve' : 'solves'} today. The next reviews are already scheduled.`
-              : 'Nothing is due. Solved something new? Log it so Recall can schedule a review.'}
+              : 'Nothing is due. Solved something new? Log it so Retension can schedule a review.'}
         </p>
         {overflow > 0 && (
           <p className="mt-2 text-muted">

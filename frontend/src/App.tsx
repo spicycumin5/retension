@@ -13,7 +13,7 @@ import TodayPage from './pages/Today'
 function Wordmark() {
   return (
     <span className="font-display text-2xl font-extrabold tracking-tight text-teal">
-      recall<span className="text-mark">.</span>
+      retension<span className="text-mark">.</span>
     </span>
   )
 }
@@ -33,7 +33,7 @@ function Shell({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto min-h-screen max-w-3xl px-4 pb-24 sm:px-6">
       <header className="flex flex-wrap items-center justify-between gap-3 py-5">
-        <NavLink to="/" aria-label="Recall home">
+        <NavLink to="/" aria-label="Retension home">
           <Wordmark />
         </NavLink>
         <nav className="flex flex-wrap items-center gap-1 text-[15px]">

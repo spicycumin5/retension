@@ -10,8 +10,8 @@ async def main(to: str) -> None:
     s = get_settings()
     await email.send(
         to,
-        "Recall test email",
-        f"Your Recall email settings work.\n\nBackend: {s.email_backend}\nFrom: {s.email_from}\n",
+        "Retension test email",
+        f"Your Retension email settings work.\n\nBackend: {s.email_backend}\nFrom: {s.email_from}\n",
     )
     print(f"Sent a test email to {to} using the {s.email_backend} backend.")
 

@@ -1,6 +1,6 @@
-# Recall
+# Retension
 
-Spaced repetition for LeetCode. Log a problem after you solve it, rate how it went, and Recall
+Spaced repetition for LeetCode. Log a problem after you solve it, rate how it went, and Retension
 schedules when to re-solve it (FSRS), capped at a daily number of re-solves.
 
 ## Run locally
@@ -51,7 +51,7 @@ HTTPS API from the same Gmail address.
    confirmation link), then create an API key under SMTP & API, then API keys.
 4. **Render.** New, then Blueprint, then pick this repo. When prompted, set `DATABASE_URL`
    (from Neon), `FRONTEND_URL` (the app's onrender.com URL; set it after the first deploy if
-   you don't know it yet), `EMAIL_FROM` (e.g. `Recall <you@gmail.com>`) and `BREVO_API_KEY`.
+   you don't know it yet), `EMAIL_FROM` (e.g. `Retension <you@gmail.com>`) and `BREVO_API_KEY`.
    Migrations run when the service starts.
 5. **GitHub Actions.** In the repo's Settings, then Secrets and variables, then Actions, add
    `DATABASE_URL`, `FRONTEND_URL`, `EMAIL_FROM`, `SMTP_USERNAME` (your Gmail address) and

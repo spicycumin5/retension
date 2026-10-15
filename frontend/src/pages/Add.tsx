@@ -208,7 +208,7 @@ export default function AddPage() {
       <section>
         <h1 className="text-4xl font-bold">Log a problem</h1>
         <p className="mt-2 max-w-prose text-lg text-muted">
-          Just solved something? Add it here and Recall will bring it back before you forget it.
+          Just solved something? Add it here and Retension will bring it back before you forget it.
         </p>
       </section>
 

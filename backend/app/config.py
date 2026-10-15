@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     static_dir: str = ""
 
     email_backend: Literal["console", "resend", "smtp", "brevo"] = "console"
-    email_from: str = "Recall <reminders@example.com>"
+    email_from: str = "Retension <reminders@example.com>"
     resend_api_key: str = ""
     brevo_api_key: str = ""
     # SMTP defaults suit Gmail with an app password.
