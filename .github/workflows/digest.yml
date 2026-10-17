@@ -44,10 +44,10 @@ jobs:
       ENV: production
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
-      EMAIL_BACKEND: smtp
+      # Brevo's API key keeps working when the Google password changes; Gmail app passwords don't.
+      EMAIL_BACKEND: brevo
       EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
-      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+      BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

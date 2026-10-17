@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import DateTime, TypeDecorator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from app.config import get_settings
 
@@ -29,7 +30,11 @@ class Base(DeclarativeBase):
     pass
 
 
-engine = create_async_engine(get_settings().database_url)
+# Serverless instances come and go, so pooled connections would sit open on Neon until they time
+# out; open one per request instead.
+engine = create_async_engine(
+    get_settings().database_url, **({"poolclass": NullPool} if get_settings().vercel else {})
+)
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
 

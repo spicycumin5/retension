@@ -34,35 +34,30 @@ In dev, emails (verification, password reset) are printed to the backend console
 
 ## Deploy for free
 
-Five free services: **Render** runs the app (one Docker web service serving the API under
-`/api` plus the built frontend), **Neon** hosts Postgres, **GitHub Actions** runs the hourly
-reminder job, and **Gmail** sends the reminders. Free Render services can't make outbound SMTP
-connections, so the site's own emails (verification, password reset) go through **Brevo**'s
-HTTPS API from the same Gmail address.
+Four free services: **Vercel** runs the app (the built frontend, plus the API under `/api` as
+Python functions; see `vercel.json`), **Neon** hosts Postgres, **GitHub Actions** runs the hourly
+reminder job and applies migrations, and **Brevo** sends every email through its HTTPS API.
 
-1. **Gmail app password.** Turn on 2-Step Verification for your Google account, then create an
-   app password (Google Account, then Security, then App passwords). Use it instead of your
-   normal password everywhere below. Test it locally first: in `backend/.env` set
-   `EMAIL_BACKEND=smtp`, `EMAIL_FROM`, `SMTP_USERNAME` and `SMTP_PASSWORD`, then run
-   `.venv/Scripts/python -m app.jobs.send_test_email you@gmail.com`.
-2. **Neon.** Create a free project and copy its connection string
+1. **Neon.** Create a free project and copy its connection string
    (`postgresql://...?sslmode=require`). It works as-is; the app converts it for its driver.
-3. **Brevo.** Create a free account, add your Gmail address under Senders (Brevo emails it a
+2. **Brevo.** Create a free account, add your email address under Senders (Brevo emails it a
    confirmation link), then create an API key under SMTP & API, then API keys.
-4. **Render.** New, then Blueprint, then pick this repo. When prompted, set `DATABASE_URL`
-   (from Neon), `FRONTEND_URL` (the app's onrender.com URL; set it after the first deploy if
-   you don't know it yet), `EMAIL_FROM` (e.g. `Retension <you@gmail.com>`) and `BREVO_API_KEY`.
-   Migrations run when the service starts.
-5. **GitHub Actions.** In the repo's Settings, then Secrets and variables, then Actions, add
-   `DATABASE_URL`, `FRONTEND_URL`, `EMAIL_FROM`, `SMTP_USERNAME` (your Gmail address) and
-   `SMTP_PASSWORD` (the app password). GitHub's runners can use SMTP, so reminders go through
-   Gmail directly. Then open the Actions tab, pick "Daily reminder emails" and use "Run workflow"
-   once to check it.
+3. **GitHub Actions.** In the repo's Settings, then Secrets and variables, then Actions, add
+   `DATABASE_URL`, `FRONTEND_URL` (the app's URL, from step 4), `EMAIL_FROM` (e.g.
+   `Retension <you@gmail.com>`, using the Brevo sender) and `BREVO_API_KEY`. Then open the
+   Actions tab and run "Database migrations" once to create the tables. It runs again by itself
+   whenever a push to main changes `backend/alembic/`.
+4. **Vercel.** Add New, then Project, then import this repo; `vercel.json` sets up both parts.
+   Under Environment Variables add `ENV=production`, `SECRET` (a random string of 32+
+   characters, e.g. from `openssl rand -hex 32`), `COOKIE_SECURE=true`, `EMAIL_BACKEND=brevo`,
+   `DATABASE_URL`, `FRONTEND_URL` (the `.vercel.app` URL; set it after the first deploy if you
+   don't know it yet, then redeploy), `EMAIL_FROM` and `BREVO_API_KEY`.
+5. **Check the reminders.** In the Actions tab, pick "Daily reminder emails" and use "Run
+   workflow" once.
 
-Limits to know: the free Render service sleeps after 15 idle minutes and takes 30 to 60 seconds
-to wake; Gmail allows roughly 500 emails a day and may send bulk mail from a personal address to
-spam, so this suits a personal tool or a small group. For more users, switch to
-`EMAIL_BACKEND=resend` with a verified domain.
+Brevo's free plan sends 300 emails a day, so this suits a personal tool or a small group. The
+`Dockerfile` still builds the whole app as one container if you'd rather host it that way;
+it runs migrations on start.
 
 ## Tests
 

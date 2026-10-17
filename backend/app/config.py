@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     # Built frontend to serve from the API process (production). Empty = don't serve.
     static_dir: str = ""
+    # Vercel sets VERCEL=1 in its functions, which run serverless rather than as one long-lived process.
+    vercel: bool = False
 
     email_backend: Literal["console", "resend", "smtp", "brevo"] = "console"
     email_from: str = "Retension <reminders@example.com>"
